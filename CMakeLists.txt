@@ -33,6 +33,9 @@ set(SOURCES
 # Add source to this project's executable.
 add_executable(BackTestBench ${SOURCES})
 
+# Add src to path
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
 if(WIN32)
   
     # Windows specific settings
