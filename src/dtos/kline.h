@@ -17,6 +17,7 @@ public:
     std::string Low;
     std::string Volume;
     int64_t TradeNum;
+    bool IsFinal;
     std::string QuoteVolume;
     std::string ActiveBuyVolume;
     std::string ActiveBuyQuoteVolume;

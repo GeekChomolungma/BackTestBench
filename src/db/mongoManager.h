@@ -6,6 +6,12 @@
 #include <mongocxx/instance.hpp>
 #include <mongocxx/uri.hpp>
 
+#include <dtos/kline.h>
+
+
+using bsoncxx::to_json;
+using bsoncxx::builder::basic::make_document;
+using bsoncxx::builder::basic::kvp;
 
 class MongoManager {
 public:
@@ -13,13 +19,8 @@ public:
     
     void GetSynedFlag();
 
-    template <typename T>
-    std::vector<T> Get(int64_t startTime, int64_t endTime, std::string eventName, std::string symbol) {
-       
-    }
+    void GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList);
 
-    template <typename T>
-    std::vector<T> Set() {};
 private:
     std::string uriStr;
     mongocxx::instance inst;

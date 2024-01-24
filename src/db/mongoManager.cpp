@@ -1,9 +1,5 @@
 #include "db/mongoManager.h"
 
-using bsoncxx::to_json;
-using bsoncxx::builder::basic::make_document;
-using bsoncxx::builder::basic::kvp;
-
 MongoManager::MongoManager(const std::string uriStr) {
     this->uriStr = uriStr;
 
@@ -39,5 +35,32 @@ void MongoManager::GetSynedFlag() {
     {
         // Handle errors.
         std::cout << "Exception: " << e.what() << std::endl;
+    }
+}
+
+void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList) {
+    auto db = this->mongoClient[dbName.c_str()];
+    auto col = db[colName.c_str()];
+    auto cursor_filtered = 
+        col.find({ make_document(kvp("kline.starttime", make_document(kvp("$gte", startTime), kvp("$lt", endTime)))) });
+
+    for (auto doc : cursor_filtered) {
+        // assert(doc["_id"].type() == bsoncxx::type::k_oid);
+        auto klineContent = doc["kline"];
+
+        Kline klineInst;
+        klineInst.StartTime = klineContent["starttime"].get_int64();
+        klineInst.EndTime = klineContent["endtime"].get_int64();
+        klineInst.Symbol = klineContent["symbol"].get_string();
+        klineInst.Interval = klineContent["interval"].get_string();
+        klineInst.Open = klineContent["open"].get_string();
+        klineInst.Close = klineContent["close"].get_string();
+        klineInst.High = klineContent["high"].get_string();
+        klineInst.Low = klineContent["low"].get_string();
+        klineInst.Volume = klineContent["volume"].get_string();
+        klineInst.TradeNum = klineContent["tradenum"].get_int64();
+        klineInst.IsFinal = klineContent["isfinal"].get_bool();
+        klineInst.QuoteVolume = klineContent["quotevolume"].get_string();
+        targetKlineList.push_back(klineInst);
     }
 }
