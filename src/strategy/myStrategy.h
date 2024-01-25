@@ -10,14 +10,14 @@ public:
 
     void initialize() override;
 
-    void onMarketData(const Kline& data) override;
+    void onMarketData(std::vector<Kline>& data) override;
 
     void onBar() override;
 
     void finalize() override;
 
 private:
-    void executeCUDACalculation();
+    void executeCUDACalculation(std::vector<Kline>& rawData);
     int64_t startTime;
     int64_t endTime;
     std::string symbol;

@@ -23,7 +23,6 @@
 #include "platform/platform.h"
 #include "strategy/myStrategy.h"
 
-
 int main()
 {
     Config cfg("config.ini");
@@ -32,14 +31,22 @@ int main()
     MongoManager dbManager(uriCfg);
     dbManager.GetSynedFlag();
 
+    std::vector<Kline> targetKlines;
+    dbManager.GetKline(1692670260000, 1692671260000, "marketInfo", "ETCUSDT", targetKlines);
+    int i = 0;
+    for (auto k : targetKlines) {
+        std::cout << "targetKlines" << i << " th element, start time is: " << k.StartTime << " open is: " << k.Open 
+            << " close is: " << k.Close << " high is: " << k.High << " low is: " << k.Low << std::endl;
+        i++;
+    }
+    
+    // back test platform
     BacktestingPlatform BTP;
-
     int64_t startTime = 86400;
     int64_t endTime = 864000;
 
     MyStrategy* strategyInstance = new MyStrategy(startTime, endTime, "ETHUSDT");
-    Kline kData;
-    BTP.runBacktest(strategyInstance, kData);
+    BTP.runBacktest(strategyInstance, targetKlines);
 
     return 0;
 }

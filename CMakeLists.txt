@@ -26,9 +26,17 @@ endif()
 
 # Add your CUDA source files and other source files
 set(SOURCES
-    src/config/config.h
     src/main.cpp
 )
+
+file(GLOB_RECURSE SRC_FILES
+    "src/config/*"
+    "src/db/*"
+    "src/dtos/*"
+    "src/platform/*"
+    "src/strategy/*"
+)
+list(APPEND SOURCES ${SRC_FILES})
 
 # Add source to this project's executable.
 add_executable(BackTestBench ${SOURCES})
