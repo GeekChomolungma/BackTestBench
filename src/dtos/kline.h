@@ -7,19 +7,19 @@ class Kline {
 public:
     int64_t StartTime;
     int64_t EndTime;
-    std::string Symbol;
-    std::string Interval;
+    char Symbol[16];
+    char Interval[16];
     int64_t FirstTradeID;
     int64_t LastTradeID;
-    std::string Open;
-    std::string Close;
-    std::string High;
-    std::string Low;
-    std::string Volume;
-    int64_t TradeNum;
+    double  Open;
+    double  Close;
+    double  High;
+    double  Low;
+    double  Volume;
+    int64_t  TradeNum;
     bool IsFinal;
-    std::string QuoteVolume;
-    std::string ActiveBuyVolume;
-    std::string ActiveBuyQuoteVolume;
+    double  QuoteVolume;
+    double  ActiveBuyVolume;
+    double  ActiveBuyQuoteVolume;
 };
 #endif

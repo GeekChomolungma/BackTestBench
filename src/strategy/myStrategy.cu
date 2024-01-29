@@ -11,19 +11,9 @@
 #include <helper_cuda.h>
 #include <helper_functions.h>  // helper utility functions
 
-__global__ void increment_kernel(int* g_data, int inc_value) {
+__global__ void increment_kernel(Kline* deviceRaw_data) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    g_data[idx] = g_data[idx] + inc_value;
-}
-
-bool correct_output(int* data, const int n, const int x) {
-    for (int i = 0; i < n; i++)
-        if (data[i] != x) {
-            printf("Error! data[%d] = %d, ref = %d\n", i, data[i], x);
-            return false;
-        }
-
-    return true;
+    printf("%d th kline, \t\t startTime is: %lli, high is:%f\n", idx, deviceRaw_data[idx].StartTime, deviceRaw_data[idx].High);
 }
 
 void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
@@ -31,7 +21,7 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     cudaDeviceProp deviceProps;
 
     printf("[%s] - Starting...\n", argv[0]);
-
+    printf("kline size is %d\n", rawData.size());
     // This will pick the best possible CUDA capable device
     devID = findCudaDevice(argc, (const char**)argv);
 
@@ -39,23 +29,20 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     checkCudaErrors(cudaGetDeviceProperties(&deviceProps, devID));
     printf("CUDA device [%s]\n", deviceProps.name);
 
-    int n = 16 * 1024 * 1024;
-    int nbytes = n * sizeof(int);
-    int value = 26;
-
-    // allocate host memory
-    int* a = 0;
-    checkCudaErrors(cudaMallocHost((void**)&a, nbytes));
-    memset(a, 0, nbytes);
+    // allocate host memeory
+    std::vector<Kline> hostSrc = rawData;
+    int n = hostSrc.size();
+    int nbytes = hostSrc.size() * sizeof(Kline);
+    printf("hostSrc size is %d, nbytes is %d \n", n, nbytes);
 
     // allocate device memory
-    int* d_a = 0;
-    checkCudaErrors(cudaMalloc((void**)&d_a, nbytes));
-    checkCudaErrors(cudaMemset(d_a, 255, nbytes));
+    Kline* deviceRaw = 0;
+    checkCudaErrors(cudaMalloc((void**)&deviceRaw, nbytes));
+    checkCudaErrors(cudaMemset(deviceRaw, 255, nbytes));
 
     // set kernel launch configuration
-    dim3 threads = dim3(512, 1);
-    dim3 blocks = dim3(n / threads.x, 1);
+    dim3 threads = dim3(32, 1);
+    dim3 blocks = dim3(n / threads.x + 1, 1);
 
     // create cuda event handles
     cudaEvent_t start, stop;
@@ -73,36 +60,33 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     checkCudaErrors(cudaProfilerStart());
     sdkStartTimer(&timer);
     cudaEventRecord(start, 0);
-    cudaMemcpyAsync(d_a, a, nbytes, cudaMemcpyHostToDevice, 0);
-    increment_kernel << <blocks, threads, 0, 0 >> > (d_a, value);
-    cudaMemcpyAsync(a, d_a, nbytes, cudaMemcpyDeviceToHost, 0);
+    cudaMemcpyAsync(deviceRaw, hostSrc.data(), nbytes, cudaMemcpyHostToDevice, 0);
+    increment_kernel<<<blocks, threads, 0, 0 >>> (deviceRaw);
+    cudaMemcpyAsync(hostSrc.data(), deviceRaw, nbytes, cudaMemcpyDeviceToHost, 0);
     cudaEventRecord(stop, 0);
     sdkStopTimer(&timer);
     checkCudaErrors(cudaProfilerStop());
 
-    // have CPU do some work while waiting for stage 1 to finish
-    unsigned long int counter = 0;
+    //// have CPU do some work while waiting for stage 1 to finish
+    //unsigned long int counter = 0;
 
-    while (cudaEventQuery(stop) == cudaErrorNotReady) {
-        counter++;
-    }
+    //while (cudaEventQuery(stop) == cudaErrorNotReady) {
+    //    counter++;
+    //}
 
+    checkCudaErrors(cudaDeviceSynchronize());
     checkCudaErrors(cudaEventElapsedTime(&gpu_time, start, stop));
 
     // print the cpu and gpu times
-    printf("time spent executing by the GPU: %.2f\n", gpu_time);
-    printf("time spent by CPU in CUDA calls: %.2f\n", sdkGetTimerValue(&timer));
-    printf("CPU executed %lu iterations while waiting for GPU to finish\n",
-        counter);
-
-    // check the output for correctness
-    bool bFinalResults = correct_output(a, n, value);
+    printf("time spent executing by the GPU: %.2f ms\n", gpu_time);
+    printf("time spent by CPU in CUDA calls: %.2f ms\n", sdkGetTimerValue(&timer));
 
     // release resources
     checkCudaErrors(cudaEventDestroy(start));
     checkCudaErrors(cudaEventDestroy(stop));
-    checkCudaErrors(cudaFreeHost(a));
-    checkCudaErrors(cudaFree(d_a));
+    //checkCudaErrors(cudaFreeHost(hostSrc));
+    checkCudaErrors(cudaFree(deviceRaw));
 
-    exit(bFinalResults ? EXIT_SUCCESS : EXIT_FAILURE);
+    return;
+   /* exit(bFinalResults ? EXIT_SUCCESS : EXIT_FAILURE);*/
 }

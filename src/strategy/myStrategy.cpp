@@ -12,9 +12,9 @@ void MyStrategy::initialize() {
 }
 
 void MyStrategy::onMarketData(std::vector<Kline>& rawData) {
-    //std::stringstream ss;
-    //ss << "maket data:" << this->symbol << "span from" << this->startTime << "to" << this->endTime;
-    //std::cout << ss.str() << std::endl;
+
+    std::cout << "targetKlines size is " << rawData.size() << std::endl;
+
     this->executeCUDACalculation(rawData);
 }
 
@@ -27,6 +27,6 @@ void  MyStrategy::finalize() {
 void  MyStrategy::executeCUDACalculation(std::vector<Kline>& rawData) {
     // for cuda process
     int argc = 0;
-    const char* argv[1] = { "Burning GPU!!!" };
+    const char* argv[1] = { "My strategy start running!" };
     kernel_wrapper(0, argv, rawData);   
 }

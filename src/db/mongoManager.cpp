@@ -51,16 +51,19 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
         Kline klineInst;
         klineInst.StartTime = klineContent["starttime"].get_int64();
         klineInst.EndTime = klineContent["endtime"].get_int64();
-        klineInst.Symbol = klineContent["symbol"].get_string();
-        klineInst.Interval = klineContent["interval"].get_string();
-        klineInst.Open = klineContent["open"].get_string();
-        klineInst.Close = klineContent["close"].get_string();
-        klineInst.High = klineContent["high"].get_string();
-        klineInst.Low = klineContent["low"].get_string();
-        klineInst.Volume = klineContent["volume"].get_string();
+        std::string symbolStr(klineContent["symbol"].get_string());
+        strcpy(klineInst.Symbol, symbolStr.c_str());
+        std::string intervalStr(klineContent["interval"].get_string());
+        strcpy(klineInst.Interval, intervalStr.c_str());
+
+        klineInst.Open = std::stod(std::string(klineContent["open"].get_string()));
+        klineInst.Close = std::stod(std::string(klineContent["close"].get_string()));
+        klineInst.High = std::stod(std::string(klineContent["high"].get_string()));
+        klineInst.Low = std::stod(std::string(klineContent["low"].get_string()));
+        klineInst.Volume = std::stod(std::string(klineContent["volume"].get_string()));
         klineInst.TradeNum = klineContent["tradenum"].get_int64();
         klineInst.IsFinal = klineContent["isfinal"].get_bool();
-        klineInst.QuoteVolume = klineContent["quotevolume"].get_string();
+        klineInst.QuoteVolume = std::stod(std::string(klineContent["quotevolume"].get_string()));
         targetKlineList.push_back(klineInst);
     }
 }
