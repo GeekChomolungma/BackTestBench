@@ -35,6 +35,7 @@ file(GLOB_RECURSE SRC_FILES
     "src/dtos/*"
     "src/platform/*"
     "src/strategy/*"
+    "src/indicator/*"
 )
 list(APPEND SOURCES ${SRC_FILES})
 

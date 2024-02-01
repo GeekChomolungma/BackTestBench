@@ -7,6 +7,9 @@
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
 
+// indicator lib
+#include "indicator/ta.cuh"
+
 // includes, project
 #include <helper_cuda.h>
 #include <helper_functions.h>  // helper utility functions
@@ -21,7 +24,7 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     cudaDeviceProp deviceProps;
 
     printf("[%s] - Starting...\n", argv[0]);
-    printf("kline size is %d\n", rawData.size());
+    printf("kline size is %zd\n", rawData.size());
     // This will pick the best possible CUDA capable device
     devID = findCudaDevice(argc, (const char**)argv);
 
@@ -37,8 +40,11 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
 
     // allocate device memory
     Kline* deviceRaw = 0;
+    float* deviceEma = 0;
     checkCudaErrors(cudaMalloc((void**)&deviceRaw, nbytes));
+    checkCudaErrors(cudaMalloc((void**)&deviceEma, n*sizeof(float)));
     checkCudaErrors(cudaMemset(deviceRaw, 255, nbytes));
+    checkCudaErrors(cudaMemset(deviceRaw, 0, n * sizeof(float)));
 
     // set kernel launch configuration
     dim3 threads = dim3(32, 1);
@@ -62,7 +68,10 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     cudaEventRecord(start, 0);
     cudaMemcpyAsync(deviceRaw, hostSrc.data(), nbytes, cudaMemcpyHostToDevice, 0);
     increment_kernel<<<blocks, threads, 0, 0 >>> (deviceRaw);
+    ema_kernel <<<blocks, threads, 0, 0 >>> (deviceRaw, deviceEma,1, n, 10, 0.2);
     cudaMemcpyAsync(hostSrc.data(), deviceRaw, nbytes, cudaMemcpyDeviceToHost, 0);
+    std::vector<float> hostEma(n);
+    cudaMemcpyAsync(hostEma.data(), deviceEma, n * sizeof(float), cudaMemcpyDeviceToHost, 0);
     cudaEventRecord(stop, 0);
     sdkStopTimer(&timer);
     checkCudaErrors(cudaProfilerStop());
@@ -80,12 +89,14 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     // print the cpu and gpu times
     printf("time spent executing by the GPU: %.2f ms\n", gpu_time);
     printf("time spent by CPU in CUDA calls: %.2f ms\n", sdkGetTimerValue(&timer));
+    printf("EMA in host length is: %d, the 0th EMA is: %f, the 1th EMA is: %f \n", hostEma.size(), hostEma[0], hostEma[1]);
 
     // release resources
     checkCudaErrors(cudaEventDestroy(start));
     checkCudaErrors(cudaEventDestroy(stop));
     //checkCudaErrors(cudaFreeHost(hostSrc));
     checkCudaErrors(cudaFree(deviceRaw));
+    checkCudaErrors(cudaFree(deviceEma));
 
     return;
    /* exit(bFinalResults ? EXIT_SUCCESS : EXIT_FAILURE);*/
