@@ -51,19 +51,34 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
         Kline klineInst;
         klineInst.StartTime = klineContent["starttime"].get_int64();
         klineInst.EndTime = klineContent["endtime"].get_int64();
-        std::string symbolStr(klineContent["symbol"].get_string());
+        bsoncxx::stdx::string_view symbolTmp = klineContent["symbol"].get_string();
+        std::string symbolStr(symbolTmp);
+
         strcpy(klineInst.Symbol, symbolStr.c_str());
         std::string intervalStr(klineContent["interval"].get_string());
         strcpy(klineInst.Interval, intervalStr.c_str());
 
-        klineInst.Open = std::stod(std::string(klineContent["open"].get_string()));
-        klineInst.Close = std::stod(std::string(klineContent["close"].get_string()));
-        klineInst.High = std::stod(std::string(klineContent["high"].get_string()));
-        klineInst.Low = std::stod(std::string(klineContent["low"].get_string()));
-        klineInst.Volume = std::stod(std::string(klineContent["volume"].get_string()));
+        bsoncxx::stdx::string_view openStrTmp = klineContent["open"].get_string();
+        klineInst.Open = std::stod(std::string(openStrTmp));
+
+        bsoncxx::stdx::string_view closeStrTmp = klineContent["close"].get_string();
+        klineInst.Close = std::stod(std::string(closeStrTmp));
+
+        bsoncxx::stdx::string_view highStrTmp = klineContent["high"].get_string();
+        klineInst.High = std::stod(std::string(highStrTmp));
+
+        bsoncxx::stdx::string_view lowStrTmp = klineContent["low"].get_string();
+        klineInst.Low = std::stod(std::string(lowStrTmp));
+
+        bsoncxx::stdx::string_view volStrTmp = klineContent["volume"].get_string();
+        klineInst.Volume = std::stod(std::string(volStrTmp));
+
         klineInst.TradeNum = klineContent["tradenum"].get_int64();
         klineInst.IsFinal = klineContent["isfinal"].get_bool();
-        klineInst.QuoteVolume = std::stod(std::string(klineContent["quotevolume"].get_string()));
+
+        bsoncxx::stdx::string_view qutovStrTmp = klineContent["quotevolume"].get_string();
+        klineInst.QuoteVolume = std::stod(std::string(qutovStrTmp));
+
         targetKlineList.push_back(klineInst);
     }
 }
