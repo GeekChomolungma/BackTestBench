@@ -1,4 +1,4 @@
-#include "MyStrategy.h"
+#include "strategy/myStrategy.h"
 #include <iostream>
 #include <sstream>
 
