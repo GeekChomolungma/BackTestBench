@@ -23,6 +23,8 @@ else()
     find_package(mongocxx REQUIRED)
 endif()
 
+# Set Install
+set(CMAKE_INSTALL_PREFIX "./App")
 
 # Add your CUDA source files and other source files
 set(SOURCES
@@ -41,6 +43,7 @@ list(APPEND SOURCES ${SRC_FILES})
 
 # Add source to this project's executable.
 add_executable(BackTestBench ${SOURCES})
+install(TARGETS BackTestBench DESTINATION bin)
 
 # Add src to path
 include_directories(${CMAKE_SOURCE_DIR}/src)
@@ -78,3 +81,5 @@ configure_file(
     ${CMAKE_BINARY_DIR}/config.ini
     COPYONLY
 )
+
+install(FILES ${CMAKE_BINARY_DIR}/config.ini DESTINATION bin)
