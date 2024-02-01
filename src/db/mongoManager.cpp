@@ -55,7 +55,9 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
         std::string symbolStr(symbolTmp);
 
         strcpy(klineInst.Symbol, symbolStr.c_str());
-        std::string intervalStr(klineContent["interval"].get_string());
+
+        bsoncxx::stdx::string_view intervalTmp = klineContent["interval"].get_string();
+        std::string intervalStr(intervalTmp);
         strcpy(klineInst.Interval, intervalStr.c_str());
 
         bsoncxx::stdx::string_view openStrTmp = klineContent["open"].get_string();
