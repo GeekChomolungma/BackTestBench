@@ -6,6 +6,8 @@
 
 #ifdef _WIN32
     // Windows-specific includes and definitions
+    #include "matplotlibcpp.h"
+    namespace plt = matplotlibcpp;
 #else
     #include <cassert>
     // Other non-Windows includes and definitions
@@ -23,13 +25,16 @@
 #include "platform/platform.h"
 #include "strategy/myStrategy.h"
 //
-#include "matplotlibcpp.h"
-namespace plt = matplotlibcpp;
+
 
 int main()
 {
-    plt::plot({ 1,3,2,4 });
-    plt::show();
+    #ifdef _WIN32
+        // Windows-specific includes and definitions
+        plt::plot({ 1,3,2,4 });
+        plt::show();
+    #else
+    #endif
 
     Config cfg("config.ini");
     const std::string uriCfg = cfg.getUri();
