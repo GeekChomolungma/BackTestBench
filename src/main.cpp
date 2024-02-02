@@ -22,9 +22,15 @@
 
 #include "platform/platform.h"
 #include "strategy/myStrategy.h"
+//
+#include "matplotlibcpp.h"
+namespace plt = matplotlibcpp;
 
 int main()
 {
+    plt::plot({ 1,3,2,4 });
+    plt::show();
+
     Config cfg("config.ini");
     const std::string uriCfg = cfg.getUri();
 
