@@ -14,11 +14,6 @@
 #include <helper_cuda.h>
 #include <helper_functions.h>  // helper utility functions
 
-__global__ void increment_kernel(Kline* deviceRaw_data) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    printf("%d th kline, \t\t startTime is: %lli, high is:%f\n", idx, deviceRaw_data[idx].StartTime, deviceRaw_data[idx].High);
-}
-
 void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     int devID;
     cudaDeviceProp deviceProps;
@@ -34,9 +29,9 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
 
     // allocate host memeory
     std::vector<Kline> hostSrc = rawData;
-    int n = hostSrc.size();
-    int nbytes = hostSrc.size() * sizeof(Kline);
-    printf("hostSrc size is %d, nbytes is %d \n", n, nbytes);
+    int n = rawData.size();
+    int nbytes = rawData.size() * sizeof(Kline);
+    printf("rawData size is %d, nbytes is %d \n", n, nbytes);
 
     // allocate device memory
     Kline* deviceRaw = 0;
@@ -66,10 +61,9 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     checkCudaErrors(cudaProfilerStart());
     sdkStartTimer(&timer);
     cudaEventRecord(start, 0);
-    cudaMemcpyAsync(deviceRaw, hostSrc.data(), nbytes, cudaMemcpyHostToDevice, 0);
-    increment_kernel<<<blocks, threads, 0, 0 >>> (deviceRaw);
-    ema_kernel <<<blocks, threads, 0, 0 >>> (deviceRaw, deviceEma,1, n, 10, 0.2);
-    cudaMemcpyAsync(hostSrc.data(), deviceRaw, nbytes, cudaMemcpyDeviceToHost, 0);
+    cudaMemcpyAsync(deviceRaw, rawData.data(), nbytes, cudaMemcpyHostToDevice, 0);
+    test_kernel <<<blocks, threads, 0, 0 >>> (deviceRaw, deviceEma,1, n, 10, 0.2);
+    cudaMemcpyAsync(rawData.data(), deviceRaw, nbytes, cudaMemcpyDeviceToHost, 0);
     std::vector<float> hostEma(n);
     cudaMemcpyAsync(hostEma.data(), deviceEma, n * sizeof(float), cudaMemcpyDeviceToHost, 0);
     cudaEventRecord(stop, 0);

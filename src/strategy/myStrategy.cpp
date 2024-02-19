@@ -28,5 +28,10 @@ void  MyStrategy::executeCUDACalculation(std::vector<Kline>& rawData) {
     // for cuda process
     int argc = 0;
     const char* argv[1] = { "My strategy start running!" };
-    kernel_wrapper(0, argv, rawData);   
+    kernel_wrapper(0, argv, rawData);
+    int i = 0;
+    for (auto kline : rawData) {
+        std::cout << i << "th kline Atr is " << kline.AveTrueRange << std::endl;
+        i++;
+    }
 }

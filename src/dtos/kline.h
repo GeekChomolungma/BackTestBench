@@ -5,6 +5,7 @@
 
 class Kline {
 public:
+    unsigned char Id[12];
     int64_t StartTime;
     int64_t EndTime;
     char Symbol[16];
@@ -15,6 +16,8 @@ public:
     double  Close;
     double  High;
     double  Low;
+    double  TrueRange;
+    double  AveTrueRange;
     double  Volume;
     int64_t  TradeNum;
     bool IsFinal;

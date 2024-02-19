@@ -59,5 +59,7 @@ int main()
     MyStrategy* strategyInstance = new MyStrategy(startTime, endTime, "ETHUSDT");
     BTP.runBacktest(strategyInstance, targetKlines);
 
+    // update Kline
+
     return 0;
 }

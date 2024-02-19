@@ -1,4 +1,5 @@
 #include "db/mongoManager.h"
+#include <iomanip> // std::setw, std::setfill
 
 MongoManager::MongoManager(const std::string uriStr) {
     this->uriStr = uriStr;
@@ -45,10 +46,22 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
         col.find({ make_document(kvp("kline.starttime", make_document(kvp("$gte", startTime), kvp("$lt", endTime)))) });
 
     for (auto doc : cursor_filtered) {
-        // assert(doc["_id"].type() == bsoncxx::type::k_oid);
+        
         auto klineContent = doc["kline"];
-
         Kline klineInst;
+
+        const auto& oidBytesVec = doc["_id"].get_oid().value.bytes();
+        for (size_t i = 0; i < 12; ++i) {
+            klineInst.Id[i] = oidBytesVec[i];
+        }
+
+        std::cout << "OID in hex: ";
+        for (int i = 0; i < 12; ++i) {
+            std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(klineInst.Id[i]);
+        }
+        std::cout << std::endl;
+
+
         klineInst.StartTime = klineContent["starttime"].get_int64();
         klineInst.EndTime = klineContent["endtime"].get_int64();
         bsoncxx::stdx::string_view symbolTmp = klineContent["symbol"].get_string();
@@ -71,6 +84,22 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
 
         bsoncxx::stdx::string_view lowStrTmp = klineContent["low"].get_string();
         klineInst.Low = std::stod(std::string(lowStrTmp));
+
+        auto trElement = klineContent["truerange"];
+        if (trElement && trElement.type() == bsoncxx::type::k_double) {
+            klineInst.TrueRange = trElement.get_double().value;
+        }
+        else {
+            klineInst.TrueRange = 0.0;
+        }
+       
+        auto atrElement = klineContent["avetruerange"];
+        if (atrElement && atrElement.type() == bsoncxx::type::k_double) {
+            klineInst.AveTrueRange = atrElement.get_double().value;
+        }
+        else {
+            klineInst.AveTrueRange = 0.0;
+        }
 
         bsoncxx::stdx::string_view volStrTmp = klineContent["volume"].get_string();
         klineInst.Volume = std::stod(std::string(volStrTmp));
