@@ -5,7 +5,7 @@
 
 class Kline {
 public:
-    unsigned char Id[12];
+    char Id[12];
     int64_t StartTime;
     int64_t EndTime;
     char Symbol[16];

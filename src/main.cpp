@@ -60,6 +60,7 @@ int main()
     BTP.runBacktest(strategyInstance, targetKlines);
 
     // update Kline
+    dbManager.BulkWriteByIds("marketInfo", "ETCUSDT", targetKlines);
 
     return 0;
 }

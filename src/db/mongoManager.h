@@ -21,6 +21,8 @@ public:
 
     void GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList);
 
+    void BulkWriteByIds(std::string dbName, std::string colName, std::vector<Kline>& rawData);
+
 private:
     std::string uriStr;
     mongocxx::instance inst;
