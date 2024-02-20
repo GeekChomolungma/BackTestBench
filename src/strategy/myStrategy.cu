@@ -29,8 +29,8 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
 
     // allocate host memeory
     std::vector<Kline> hostSrc = rawData;
-    int n = rawData.size();
-    int nbytes = rawData.size() * sizeof(Kline);
+    size_t n = rawData.size();
+    size_t nbytes = rawData.size() * sizeof(Kline);
     printf("rawData size is %d, nbytes is %d \n", n, nbytes);
 
     // allocate device memory

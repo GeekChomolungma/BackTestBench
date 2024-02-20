@@ -43,7 +43,7 @@ int main()
     dbManager.GetSynedFlag();
 
     std::vector<Kline> targetKlines;
-    dbManager.GetKline(1692670260000, 1692671260000, "marketInfo", "ETCUSDT", targetKlines);
+    dbManager.GetKline(1692670260000, 1692676319999, "marketInfo", "ETCUSDT", targetKlines);
     int i = 0;
     for (auto k : targetKlines) {
         std::cout << "targetKlines" << i << " th element, start time is: " << k.StartTime << " open is: " << k.Open 

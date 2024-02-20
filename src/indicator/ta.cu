@@ -6,6 +6,7 @@ __global__ void test_kernel(Kline* inputK, float* output, int stockNum, int klin
     if (idx < stockNum) {
         tr_cuda_klines(idx, inputK, klineSize);
         rma_cuda_klines(idx, inputK, output, klineSize, length, 1);
+        st_cuda_klines(idx, inputK, 5.0, klineSize);
     }
 }
 
@@ -78,5 +79,64 @@ __device__ void tr_cuda_klines(int idx, Kline* inputK, int klineSize) {
         }
         printf("tr_cuda_klines, stock number: %d, %dth High: %f, Low: %f, Close: %f, TrueRange: %f\n", idx, i, 
             inputK[i].High, inputK[i].Low, inputK[i].Close, inputK[i].TrueRange);
+    }
+}
+
+
+// 
+//method st(bar b, simple float factor, simple int len) = >
+//    float atr = b.atr(len)
+//    float up = b.src('hl2') + factor * atr
+//    up : = up < nz(up[1]) or b.c[1] > nz(up[1]) ? up : nz(up[1])
+//    float dn = b.src('hl2') - factor * atr
+//    dn : = dn > nz(dn[1]) or b.c[1] < nz(dn[1]) ? dn : nz(dn[1])
+//
+//    float st = na
+//    int   dir = na
+//    dir : = switch
+//    na(atr[1]) = > 1
+//    st[1] == nz(up[1]) = > dir : = b.c > up ? -1 : +1
+//    = > dir : = b.c < dn ? +1 : -1
+//    st : = dir == -1 ? dn : up
+//
+//    supertrend.new(st, dir)
+__device__ void st_cuda_klines(int idx, Kline* inputK, float factor, int klineSize) {
+    // kline.atr has involved length, 
+    // so this SuperTrend Calculated should be called and coupled with Atr func
+
+    for (auto i = 0 + idx * klineSize; i < (idx + 1) * klineSize; i++) {
+
+        double hl2 = (inputK[i].High + inputK[i].Low) / 2.0;
+        double facAtr = factor * inputK[i].AveTrueRange;
+
+        double stUpper = hl2 + facAtr;
+        double stLower = hl2 - facAtr;
+
+        if (i == idx * klineSize) {
+            // StUp and StDown:
+            // 0.0 nothing to do
+            // non 0.0, nothing to do, keep it
+            if (inputK[i].AveTrueRange == 0) { inputK[i].STDirection = 1; }
+        }
+        else {
+            inputK[i].StUp = (stUpper < inputK[i - 1].StUp || inputK[i - 1].Close > inputK[i - 1].StUp) ? stUpper : inputK[i - 1].StUp;
+            inputK[i].StDown = (stLower > inputK[i - 1].StDown || inputK[i - 1].Close < inputK[i - 1].StDown) ? stLower : inputK[i - 1].StDown;
+            if (inputK[i - 1].SuperTrendValue == inputK[i - 1].StUp) { 
+                inputK[i].STDirection = (inputK[i].Close > inputK[i].StUp) ? -1 : 1; 
+            }
+            else {
+                inputK[i].STDirection = (inputK[i].Close < inputK[i].StDown) ? 1 : -1;
+            }
+            
+            //alerts a = alerts.new(
+            //    math.sign(ta.change(st.d)) == 1,
+            //    math.sign(ta.change(st.d)) == -1)
+            inputK[i].Action = ((inputK[i].STDirection - inputK[i - 1].STDirection) > 0) ? 1 : (((inputK[i].STDirection - inputK[i - 1].STDirection) < 0) ? 2 : 0);
+        }
+        
+        inputK[i].SuperTrendValue = (inputK[i].STDirection == -1) ? inputK[i].StDown : inputK[i].StUp;
+
+        printf("st_cuda_klines, stock number: %d, %dth StUp: %f, StDown: %f, SuperTrendValue: %f, STDirection: %d, Action: %d\n", idx, i,
+            inputK[i].StUp, inputK[i].StDown, inputK[i].SuperTrendValue, inputK[i].STDirection, inputK[i].Action);
     }
 }

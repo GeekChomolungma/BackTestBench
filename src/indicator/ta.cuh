@@ -11,5 +11,6 @@ __device__ void rma_cuda_klines(int idx, Kline* inputK, float* output, int kline
 
 __device__ void tr_cuda_klines(int idx, Kline* inputK, int klineSize);
 
+__device__ void st_cuda_klines(int idx, Kline* inputK, float factor, int klineSize);
 
 #endif
