@@ -1,6 +1,7 @@
 // includes, system
 #include <stdio.h>
 #include <vector>
+#include <utility> // for std::pair
 #include <dtos/kline.h>
 
 // includes CUDA Runtime
@@ -14,7 +15,7 @@
 #include <helper_cuda.h>
 #include <helper_functions.h>  // helper utility functions
 
-void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
+void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData, std::vector<std::pair<int, int>>& dataIndexes) {
     int devID;
     cudaDeviceProp deviceProps;
 
@@ -31,15 +32,31 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     std::vector<Kline> hostSrc = rawData;
     size_t n = rawData.size();
     size_t nbytes = rawData.size() * sizeof(Kline);
-    printf("rawData size is %d, nbytes is %d \n", n, nbytes);
+    printf("rawData size is %zd, nbytes is %zd \n", n, nbytes);
+
+    // calculate stock number and 
+    // get start and end index of each stock
+    size_t stockNumber = dataIndexes.size();
+    int* startIndexes = new int[stockNumber];
+    int* endIndexes = new int[stockNumber];
+    for (auto i = 0; i < stockNumber; i++) {
+        startIndexes[i] = dataIndexes[i].first;
+        endIndexes[i] = dataIndexes[i].second;
+    }
 
     // allocate device memory
     Kline* deviceRaw = 0;
     float* deviceEma = 0;
+    int* deviceStartInd = 0;
+    int* deviceEndInd = 0;
     checkCudaErrors(cudaMalloc((void**)&deviceRaw, nbytes));
     checkCudaErrors(cudaMalloc((void**)&deviceEma, n*sizeof(float)));
     checkCudaErrors(cudaMemset(deviceRaw, 255, nbytes));
     checkCudaErrors(cudaMemset(deviceRaw, 0, n * sizeof(float)));
+    checkCudaErrors(cudaMalloc((void**)&deviceStartInd, stockNumber*sizeof(int)));
+    checkCudaErrors(cudaMemset(deviceStartInd, 0, stockNumber * sizeof(int)));
+    checkCudaErrors(cudaMalloc((void**)&deviceEndInd, stockNumber * sizeof(int)));
+    checkCudaErrors(cudaMemset(deviceEndInd, 0, stockNumber * sizeof(int)));
 
     // set kernel launch configuration
     dim3 threads = dim3(32, 1);
@@ -57,16 +74,22 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     checkCudaErrors(cudaDeviceSynchronize());
     float gpu_time = 0.0f;
 
+    // new a stream for this task
+    cudaStream_t stream;
+    cudaStreamCreate(&stream);
+
     // asynchronously issue work to the GPU (all to stream 0)
     checkCudaErrors(cudaProfilerStart());
     sdkStartTimer(&timer);
-    cudaEventRecord(start, 0);
-    cudaMemcpyAsync(deviceRaw, rawData.data(), nbytes, cudaMemcpyHostToDevice, 0);
-    test_kernel <<<blocks, threads, 0, 0 >>> (deviceRaw, deviceEma,1, n, 10, 0.2);
-    cudaMemcpyAsync(rawData.data(), deviceRaw, nbytes, cudaMemcpyDeviceToHost, 0);
+    cudaEventRecord(start, stream);
+    cudaMemcpyAsync(deviceRaw, rawData.data(), nbytes, cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(deviceStartInd, startIndexes, stockNumber * sizeof(int), cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(deviceEndInd, endIndexes, stockNumber * sizeof(int), cudaMemcpyHostToDevice, stream);
+    test_kernel <<<blocks, threads, 0, stream >>> (deviceRaw, deviceEma, stockNumber, deviceStartInd, deviceEndInd, 10, 0.2);
+    cudaMemcpyAsync(rawData.data(), deviceRaw, nbytes, cudaMemcpyDeviceToHost, stream);
     std::vector<float> hostEma(n);
-    cudaMemcpyAsync(hostEma.data(), deviceEma, n * sizeof(float), cudaMemcpyDeviceToHost, 0);
-    cudaEventRecord(stop, 0);
+    cudaMemcpyAsync(hostEma.data(), deviceEma, n * sizeof(float), cudaMemcpyDeviceToHost, stream);
+    cudaEventRecord(stop, stream);
     sdkStopTimer(&timer);
     checkCudaErrors(cudaProfilerStop());
 
@@ -91,6 +114,11 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData) {
     //checkCudaErrors(cudaFreeHost(hostSrc));
     checkCudaErrors(cudaFree(deviceRaw));
     checkCudaErrors(cudaFree(deviceEma));
+    checkCudaErrors(cudaFree(deviceStartInd));
+    checkCudaErrors(cudaFree(deviceEndInd));
+    cudaStreamDestroy(stream);
+    delete[] startIndexes;
+    delete[] endIndexes;
 
     return;
    /* exit(bFinalResults ? EXIT_SUCCESS : EXIT_FAILURE);*/

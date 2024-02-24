@@ -1,4 +1,5 @@
 ﻿#include <iostream>
+#include <sstream>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
@@ -8,6 +9,7 @@ public:
         boost::property_tree::ini_parser::read_ini(filename, pt);
     }
 
+    // database info
     std::string getDatabaseHost() const {
         return pt.get<std::string>("database.host");
     }
@@ -26,6 +28,22 @@ public:
 
     std::string getUri() const{
         return pt.get<std::string>("database.uri");
+    }
+
+    // market info
+    // symbols, intervals, with ',' separated
+    std::vector<std::string> getMarketSubInfo(std::string target) const {
+        std::string input = pt.get<std::string>(target);
+        std::stringstream ss(input);
+
+        std::vector<std::string> tokens;
+        std::string token;
+        
+        while (std::getline(ss, token, ',')) {
+            tokens.push_back(token);
+        }
+
+        return tokens;
     }
 
 private:

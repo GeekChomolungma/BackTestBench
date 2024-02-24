@@ -11,7 +11,7 @@ template<typename DataT>
 class BaseStrategy : public BaseStrategyInterface {
     public:
         virtual void initialize() = 0;
-        virtual void onMarketData(std::vector<DataT>& data) = 0;
+        virtual void onMarketData(std::vector<DataT>& data, std::vector<std::pair<int, int>>& dataIndexes) = 0;
         virtual void onBar() = 0;
         virtual void finalize() = 0;
 };

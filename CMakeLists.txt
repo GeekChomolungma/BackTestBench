@@ -15,7 +15,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find the MONGOCXX package
 if(WIN32)
+    #set(Boost_NO_SYSTEM_PATHS ON)
+    #set(Boost_NO_BOOST_CMAKE ON)  # 禁用 Boost 的 CMake 配置，以便使用自定义路径
     set(BOOST_ROOT "D:/boost/boost_1_83_0")
+    set(BOOST_LIBRARYDIR "D:/boost/boost_1_83_0/stage/lib") # ${BOOST_ROOT}/stage/lib
+    
     find_package(mongocxx REQUIRED)
     find_path(MATPLOTLIB_CPP_INCLUDE_DIRS "matplotlibcpp.h")
 
@@ -41,12 +45,25 @@ file(GLOB_RECURSE SRC_FILES
     "src/platform/*"
     "src/strategy/*"
     "src/indicator/*"
+    "src/threadPool/*"
 )
 list(APPEND SOURCES ${SRC_FILES})
 
 # Add source to this project's executable.
 add_executable(BackTestBench ${SOURCES})
 install(TARGETS BackTestBench DESTINATION bin)
+
+# for boost environment
+find_package(Boost REQUIRED COMPONENTS thread)
+# target_link_libraries(BackTestBench PRIVATE Boost::thread)
+# above command equals including libs and headers both
+include_directories(${Boost_INCLUDE_DIRS})
+target_link_libraries(BackTestBench PRIVATE ${Boost_LIBRARIES})
+
+# # 使用 target_include_directories 而不是 include_directories
+# target_include_directories(BackTestBench PRIVATE ${Boost_INCLUDE_DIRS})
+# # 直接链接到 Boost imported targets
+# target_link_libraries(BackTestBench PRIVATE Boost::thread)
 
 # Add src to path
 include_directories(${CMAKE_SOURCE_DIR}/src)
@@ -94,11 +111,6 @@ else()
     # set third part depedency
     include_directories("/root/dependency/cuda12/cuda-samples-master/Common")
 endif()
-
-# for boost environment
-find_package(Boost 1.83 REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS})
-target_link_libraries(BackTestBench PRIVATE ${Boost_LIBRARIES})
 
 # for config file
 configure_file(

@@ -3,6 +3,7 @@
 
 #include "config/config.h"
 #include "db/mongoManager.h"
+#include "threadPool/threadPool.h"
 
 #ifdef _WIN32
     // Windows-specific includes and definitions
@@ -24,6 +25,7 @@
 
 #include "platform/platform.h"
 #include "strategy/myStrategy.h"
+
 //
 
 
@@ -38,29 +40,30 @@ int main()
 
     Config cfg("config.ini");
     const std::string uriCfg = cfg.getUri();
+    const std::vector<std::string> allSymbols = cfg.getMarketSubInfo("marketsub.symbols");
+    const std::vector<std::string> allIntervals = cfg.getMarketSubInfo("marketsub.intervals");
 
-    MongoManager dbManager(uriCfg);
-    dbManager.GetSynedFlag();
-
-    std::vector<Kline> targetKlines;
-    dbManager.GetKline(1692670260000, 1692676319999, "marketInfo", "ETCUSDT", targetKlines);
-    int i = 0;
-    for (auto k : targetKlines) {
-        std::cout << "targetKlines" << i << " th element, start time is: " << k.StartTime << " open is: " << k.Open 
-            << " close is: " << k.Close << " high is: " << k.High << " low is: " << k.Low << std::endl;
-        i++;
-    }
-    
     // back test platform
-    BacktestingPlatform BTP;
+    BacktestingPlatform BTP(uriCfg);
     int64_t startTime = 86400;
     int64_t endTime = 864000;
 
-    MyStrategy* strategyInstance = new MyStrategy(startTime, endTime, "ETHUSDT");
-    BTP.runBacktest(strategyInstance, targetKlines);
+    //MongoManager dbManager(uriCfg);
+    BTP.dbManager.GetSynedFlag();
+    MyStrategy* strategyInstance = new MyStrategy(startTime, endTime, "ETCUSDT");
+    auto backTestTask = boost::bind(&BacktestingPlatform::runStrategyTask<Kline>,
+        &BTP, 
+        strategyInstance, 
+        1692670260000, 
+        1692676319999, 
+        "marketInfo",
+        allSymbols,
+        "15m");
 
-    // update Kline
-    dbManager.BulkWriteByIds("marketInfo", "ETCUSDT", targetKlines);
+    ThreadPool tp(6);
+    tp.enqueue(backTestTask);
+
+    boost::this_thread::sleep_for(boost::chrono::seconds(20));
 
     return 0;
 }

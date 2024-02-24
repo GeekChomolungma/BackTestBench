@@ -1,12 +1,12 @@
 #include "indicator/ta.cuh"
 #include <stdio.h>
 
-__global__ void test_kernel(Kline* inputK, float* output, int stockNum, int klineSize, int length, float alpha) {
+__global__ void test_kernel(Kline* inputK, float* output, int stockNum, int* deviceStartIndex, int* deviceEndIndex, int length, float alpha) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < stockNum) {
-        tr_cuda_klines(idx, inputK, klineSize);
-        rma_cuda_klines(idx, inputK, output, klineSize, length, 1);
-        st_cuda_klines(idx, inputK, 5.0, klineSize);
+        tr_cuda_klines(idx, inputK, deviceStartIndex[idx], deviceEndIndex[idx]);
+        rma_cuda_klines(idx, inputK, output, deviceStartIndex[idx], deviceEndIndex[idx], length, 1);
+        st_cuda_klines(idx, inputK, 5.0, deviceStartIndex[idx], deviceEndIndex[idx]);
     }
 }
 
@@ -22,15 +22,16 @@ __device__ void ema_cuda_klines(int idx, Kline* inputK, float* output, int kline
     }
 }
 
-__device__ void rma_cuda_klines(int idx, Kline* inputK, float* output, int klineSize, int length, int rmaType) {
+__device__ void rma_cuda_klines(int idx, Kline* inputK, float* output, int start, int end, int length, int rmaType) {
     auto rmaAlpha = 1.0 / float(length);
+    // we make sure the first element is either 0 element or a calculated history element
     // 0. High
     // 1. Atr
 
     switch (rmaType) {
         case 0:
-            for (auto i = 0 + idx * klineSize; i < (idx + 1) * klineSize; i++) {
-                if (i < length + idx * klineSize) {
+            for (auto i = start; i < end + 1; i++) {
+                if (i < start + length) {
                     output[i] = inputK[i].High;
                 }
                 else {
@@ -40,8 +41,8 @@ __device__ void rma_cuda_klines(int idx, Kline* inputK, float* output, int kline
             }
             break;
         case 1:
-            for (auto i = 0 + idx * klineSize; i < (idx + 1) * klineSize; i++) {
-                if (i < length + idx * klineSize) {
+            for (auto i = start; i < end + 1; i++) {
+                if (i == start) {
                     if (inputK[i].AveTrueRange == 0.0) {
                         // initial ATR
                         output[i] = inputK[i].TrueRange;
@@ -63,9 +64,9 @@ __device__ void rma_cuda_klines(int idx, Kline* inputK, float* output, int kline
     }
 }
 
-__device__ void tr_cuda_klines(int idx, Kline* inputK, int klineSize) {
-    for (auto i = 0 + idx * klineSize; i < (idx + 1) * klineSize; i++) {
-        if (i == 0 + idx * klineSize){
+__device__ void tr_cuda_klines(int idx, Kline* inputK, int start, int end) {
+    for (auto i = start; i < end + 1; i++) {
+        if (i == start){
             if (inputK[i].TrueRange == 0.0) {
                 // initial TR
                 inputK[i].TrueRange = inputK[i].High - inputK[i].Low;
@@ -100,11 +101,11 @@ __device__ void tr_cuda_klines(int idx, Kline* inputK, int klineSize) {
 //    st : = dir == -1 ? dn : up
 //
 //    supertrend.new(st, dir)
-__device__ void st_cuda_klines(int idx, Kline* inputK, float factor, int klineSize) {
+__device__ void st_cuda_klines(int idx, Kline* inputK, float factor, int start, int end) {
     // kline.atr has involved length, 
     // so this SuperTrend Calculated should be called and coupled with Atr func
 
-    for (auto i = 0 + idx * klineSize; i < (idx + 1) * klineSize; i++) {
+    for (auto i = start; i < end + 1; i++) {
 
         double hl2 = (inputK[i].High + inputK[i].Low) / 2.0;
         double facAtr = factor * inputK[i].AveTrueRange;
@@ -112,7 +113,7 @@ __device__ void st_cuda_klines(int idx, Kline* inputK, float factor, int klineSi
         double stUpper = hl2 + facAtr;
         double stLower = hl2 - facAtr;
 
-        if (i == idx * klineSize) {
+        if (i == start) {
             // StUp and StDown:
             // 0.0 nothing to do
             // non 0.0, nothing to do, keep it

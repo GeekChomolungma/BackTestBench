@@ -1,3 +1,6 @@
+#ifndef MONGOMANAGER_H
+#define MONGOMANAGER_H
+
 #include <vector>
 #include <bsoncxx/json.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -28,3 +31,5 @@ private:
     mongocxx::instance inst;
     mongocxx::client mongoClient;
 };
+
+#endif
