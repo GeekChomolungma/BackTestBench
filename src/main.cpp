@@ -5,15 +5,6 @@
 #include "db/mongoManager.h"
 #include "threadPool/threadPool.h"
 
-#ifdef _WIN32
-    // Windows-specific includes and definitions
-    #include "matplotlibcpp.h"
-    namespace plt = matplotlibcpp;
-#else
-    #include <cassert>
-    // Other non-Windows includes and definitions
-#endif
-
 #include <stdio.h>
 #include <bsoncxx/json.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -26,6 +17,14 @@
 #include "platform/platform.h"
 #include "strategy/myStrategy.h"
 
+#ifdef _WIN32
+    // Windows-specific includes and definitions
+    #include "matplotlibcpp.h"
+    namespace plt = matplotlibcpp;
+#else
+#include <cassert>
+// Other non-Windows includes and definitions
+#endif
 //
 
 
@@ -54,16 +53,14 @@ int main()
     auto backTestTask = boost::bind(&BacktestingPlatform::runStrategyTask<Kline>,
         &BTP, 
         strategyInstance, 
-        1692670260000, 
-        1692676319999, 
+        1640966400000,
+        1641054599999,
         "marketInfo",
         allSymbols,
         "15m");
 
     ThreadPool tp(6);
     tp.enqueue(backTestTask);
-
-    boost::this_thread::sleep_for(boost::chrono::seconds(20));
 
     return 0;
 }

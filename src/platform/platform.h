@@ -47,7 +47,6 @@ public:
         }
 
         // exec the calculation
-        
         strategyInst->onMarketData(targetData, dataIndexes);
 
         // update Kline one by one with Bulk
