@@ -20,14 +20,29 @@ if(WIN32)
     set(BOOST_ROOT "D:/boost/boost_1_83_0")
     set(BOOST_LIBRARYDIR "D:/boost/boost_1_83_0/stage/lib") # ${BOOST_ROOT}/stage/lib
     
-    find_package(mongocxx REQUIRED)
-    find_path(MATPLOTLIB_CPP_INCLUDE_DIRS "matplotlibcpp.h")
+    #find_package(mongocxx REQUIRED)
+    find_package(libmongocxx REQUIRED)
+    find_package(libbsoncxx REQUIRED)
 
-    #set(bsoncxx_DIR "D:/mongo-driver-cxx/mongo-cxx-driver/lib/cmake/bsoncxx-3.8.0")
-    #set(mongocxx_DIR "D:/mongo-driver-cxx/mongo-cxx-driver/lib/cmake/mongocxx-3.8.0")
+    message("LIBMONGOCXX_INCLUDE_DIRS = ${LIBMONGOCXX_INCLUDE_DIRS}")
+    message("LIBMONGOCXX_LIBRARIES = ${LIBMONGOCXX_LIBRARIES}")
+    message("LIBBSONCXX_INCLUDE_DIRS = ${LIBBSONCXX_INCLUDE_DIRS}")
+    message("LIBBSONCXX_LIBRARIES = ${LIBBSONCXX_LIBRARIES}")
+
+    # matplot
+    find_path(MATPLOTLIB_CPP_INCLUDE_DIRS "matplotlibcpp.h")
 else()
-    find_package(bsoncxx REQUIRED)
-    find_package(mongocxx REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(MONGOCXX REQUIRED libmongocxx)
+    pkg_check_modules(BSONCXX REQUIRED libbsoncxx)
+    include_directories(${MONGOCXX_INCLUDE_DIRS} ${BSONCXX_INCLUDE_DIRS})
+    link_directories(${MONGOCXX_LIBRARY_DIRS} ${BSONCXX_LIBRARY_DIRS})
+    add_definitions(${MONGOCXX_CFLAGS_OTHER} ${BSONCXX_CFLAGS_OTHER})
+
+    message("BSONCXX_INCLUDE_DIRS = ${BSONCXX_INCLUDE_DIRS}")
+    message("MONGOCXX_INCLUDE_DIRS = ${MONGOCXX_INCLUDE_DIRS}")
+    message("BSONCXX_LIBRARIES = ${BSONCXX_LIBRARIES}")
+    message("MONGOCXX_LIBRARIES = ${MONGOCXX_LIBRARIES}")
 endif()
 
 # Set Install
@@ -72,9 +87,12 @@ if(WIN32)
   
     # Windows specific settings
     # set third part depedency
-    include_directories("D:/vcpkg/vcpkg/installed/x64-windows/include/bsoncxx/v_noabi")
-    include_directories("D:/vcpkg/vcpkg/installed/x64-windows/include/mongocxx/v_noabi")
-    target_link_libraries(BackTestBench PRIVATE mongocxx bsoncxx)
+    # include_directories("D:/vcpkg/vcpkg/installed/x64-windows/include/bsoncxx/v_noabi")
+    # include_directories("D:/vcpkg/vcpkg/installed/x64-windows/include/mongocxx/v_noabi")
+    # target_link_libraries(BackTestBench PRIVATE mongocxx bsoncxx)
+    target_include_directories(BackTestBench PRIVATE ${LIBBSONCXX_INCLUDE_DIRS})
+    target_include_directories(BackTestBench PRIVATE ${LIBMONGOCXX_INCLUDE_DIRS})
+    target_link_libraries(BackTestBench PRIVATE ${LIBBSONCXX_LIBRARIES} ${LIBMONGOCXX_LIBRARIES})
 
     include_directories("D:/cuda12sample/cuda-samples-12.0/cuda-samples-12.0/Common")
     file(GLOB CUDA_LIBS "D:/cuda12sample/cuda-samples-12.0/cuda-samples-12.0/Common/lib/x64/*.lib")
@@ -100,13 +118,17 @@ if(WIN32)
 
     target_include_directories(BackTestBench PRIVATE ${MATPLOTLIB_CPP_INCLUDE_DIRS})
 else()
-    # Link against the found libraries
-    target_link_libraries(BackTestBench PRIVATE "/usr/local/lib/libbsoncxx.so") # ${BSONCXX_LIBRARIES})
-    target_link_libraries(BackTestBench PRIVATE "/usr/local/lib/libmongocxx.so") # ${MONGOCXX_LIBRARIES})
+    # # Link against the found libraries
+    # target_link_libraries(BackTestBench PRIVATE "/usr/local/lib/libbsoncxx.so") # ${BSONCXX_LIBRARIES})
+    # target_link_libraries(BackTestBench PRIVATE "/usr/local/lib/libmongocxx.so") # ${MONGOCXX_LIBRARIES})
 
-    # Add the include directories
-    target_include_directories(BackTestBench PRIVATE "/usr/local/include/bsoncxx/v_noabi") # ${BSONCXX_INCLUDE_DIRS})
-    target_include_directories(BackTestBench PRIVATE "/usr/local/include/mongocxx/v_noabi") # ${MONGOCXX_INCLUDE_DIRS}) 
+    # # Add the include directories
+    # target_include_directories(BackTestBench PRIVATE "/usr/local/include/bsoncxx/v_noabi") # ${BSONCXX_INCLUDE_DIRS})
+    # target_include_directories(BackTestBench PRIVATE "/usr/local/include/mongocxx/v_noabi") # ${MONGOCXX_INCLUDE_DIRS}) 
+
+    target_include_directories(BackTestBench PRIVATE ${BSONCXX_INCLUDE_DIRS})
+    target_include_directories(BackTestBench PRIVATE ${MONGOCXX_INCLUDE_DIRS})
+    target_link_libraries(BackTestBench PRIVATE ${BSONCXX_LIBRARIES} ${MONGOCXX_LIBRARIES})
 
     # set third part depedency
     include_directories("/root/dependency/cuda12/cuda-samples-master/Common")

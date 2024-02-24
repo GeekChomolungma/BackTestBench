@@ -106,7 +106,7 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData, s
     // print the cpu and gpu times
     printf("time spent executing by the GPU: %.2f ms\n", gpu_time);
     printf("time spent by CPU in CUDA calls: %.2f ms\n", sdkGetTimerValue(&timer));
-    printf("EMA in host length is: %d, the 0th EMA is: %f, the 1th EMA is: %f \n", hostEma.size(), hostEma[0], hostEma[1]);
+    printf("EMA in host length is: %zd, the 0th EMA is: %f, the 1th EMA is: %f \n", hostEma.size(), hostEma[0], hostEma[1]);
 
     // release resources
     checkCudaErrors(cudaEventDestroy(start));
