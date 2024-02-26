@@ -1,6 +1,7 @@
 #include "strategy/baseStrategy.h"
 #include "db/mongoManager.h"
 #include <sstream>
+#include <iomanip> // std::setw, std::setfill
 #include <iostream>
 
 
@@ -27,22 +28,26 @@ public:
             std::ostringstream oss;
             oss << "Binance-" << s << "-" << interval;
             std::string colName = oss.str();
-            colNameList.push_back(colName);
-
+            
             this->dbManager.GetKline(startTime, endTime, dbName, colName, targetData);
+            std::cout << "GetKline colName:" << colName << ", size is:" << targetData.size() - startIndex << "\n" << std::endl;
             if (targetData.size() == startIndex) {
                 continue;
             }
 
+            colNameList.push_back(colName);
             int endIndex = targetData.size() - 1;
             dataIndexes.push_back(std::pair<int, int>(startIndex, endIndex));
             startIndex = targetData.size();
         }
        
         int i = 0;
-        for (auto k : targetData) {
-            std::cout << "targetKlines" << i << " th element, start time is: " << k.StartTime << " open is: " << k.Open
-                << " close is: " << k.Close << " high is: " << k.High << " low is: " << k.Low << std::endl;
+        for (auto dIndex : dataIndexes) {
+            for (int start = dIndex.first; start <= dIndex.second; start++) {
+                auto k = targetData[start];
+                std::cout << "Pending Calculate Collection: " << colNameList[i] << " " << start << " th Kline, start time is : " << k.StartTime << " open is : " << k.Open
+                    << " close is: " << k.Close << " high is: " << k.High << " low is: " << k.Low << "\n" << std::endl;
+            }
             i++;
         }
 
@@ -51,7 +56,16 @@ public:
 
         // update Kline one by one with Bulk
         int colNameIndex = 0;
+        std::cout << interval + " dataIndexes size is: " << targetData.size() << "\n" << std::endl;
         for (auto dIndex : dataIndexes) {
+
+            Kline kline0 = static_cast<Kline>(targetData[dIndex.first]);
+            std::cout << "Write Back collection: " << colNameList[colNameIndex] << " first kline ID is:";
+            for (int i = 0; i < 12; ++i) {
+                std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(kline0.Id[i]);
+            }
+            std::cout << std::dec << "\n" << std::endl;
+
             std::vector<T> unitData(targetData.begin() + dIndex.first, targetData.begin() + dIndex.second + 1);
             this->dbManager.BulkWriteByIds(dbName, colNameList[colNameIndex], unitData);
             colNameIndex++;

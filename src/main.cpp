@@ -44,23 +44,26 @@ int main()
 
     // back test platform
     BacktestingPlatform BTP(uriCfg);
-    int64_t startTime = 86400;
-    int64_t endTime = 864000;
-
-    //MongoManager dbManager(uriCfg);
     BTP.dbManager.GetSynedFlag();
-    MyStrategy* strategyInstance = new MyStrategy(startTime, endTime, "ETCUSDT");
-    auto backTestTask = boost::bind(&BacktestingPlatform::runStrategyTask<Kline>,
-        &BTP, 
-        strategyInstance, 
-        1640966400000,
-        1641054599999,
-        "marketInfo",
-        allSymbols,
-        "15m");
 
+    int64_t startTime = 0; // not used yet
+    int64_t endTime = 0; // not used yet
+
+    // create a thread group and push task
     ThreadPool tp(6);
-    tp.enqueue(backTestTask);
+    for (auto interval : allIntervals) {
+        MyStrategy* strategyInstance = new MyStrategy(startTime, endTime, "");
+        auto backTestTask = boost::bind(&BacktestingPlatform::runStrategyTask<Kline>,
+            &BTP,
+            strategyInstance,
+            1640966400000,
+            1641311999000,
+            "marketInfo",
+            allSymbols,
+            interval);
+
+        tp.enqueue(backTestTask);
+    }
 
     return 0;
 }

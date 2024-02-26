@@ -32,7 +32,6 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData, s
     std::vector<Kline> hostSrc = rawData;
     size_t n = rawData.size();
     size_t nbytes = rawData.size() * sizeof(Kline);
-    printf("rawData size is %zd, nbytes is %zd \n", n, nbytes);
 
     // calculate stock number and 
     // get start and end index of each stock

@@ -18,7 +18,7 @@ __device__ void ema_cuda_klines(int idx, Kline* inputK, float* output, int kline
         else {
             output[i] = alpha * inputK[i].High + (1 - alpha) * output[i - 1];
         }
-        printf("ema_cuda stock number: %d, %dth EMA, \t\t :%f\n", idx, i, output[i]);
+        // printf("ema_cuda stock number: %d, %dth EMA, \t\t :%f\n", idx, i, output[i]);
     }
 }
 
@@ -56,7 +56,7 @@ __device__ void rma_cuda_klines(int idx, Kline* inputK, float* output, int start
                     output[i] = rmaAlpha * inputK[i].TrueRange + (1 - rmaAlpha) * output[i - 1];
                     inputK[i].AveTrueRange = rmaAlpha * inputK[i].TrueRange + (1 - rmaAlpha) * inputK[i - 1].AveTrueRange;
                 }
-                printf("rma_cuda_klines type: AveTrueRange, stock number: %d, %dth RMA, \t\t :%f\n", idx, i, output[i]);
+                // printf("rma_cuda_klines type: AveTrueRange, stock number: %d, %dth RMA, \t\t :%f\n", idx, i, output[i]);
             }
             break;
         default:
@@ -78,8 +78,8 @@ __device__ void tr_cuda_klines(int idx, Kline* inputK, int start, int end) {
                 fabs(inputK[i].Low - inputK[i - 1].Close)
             );
         }
-        printf("tr_cuda_klines, stock number: %d, %dth High: %f, Low: %f, Close: %f, TrueRange: %f\n", idx, i, 
-            inputK[i].High, inputK[i].Low, inputK[i].Close, inputK[i].TrueRange);
+        //printf("tr_cuda_klines, stock number: %d, %dth High: %f, Low: %f, Close: %f, TrueRange: %f\n", idx, i, 
+        //    inputK[i].High, inputK[i].Low, inputK[i].Close, inputK[i].TrueRange);
     }
 }
 
@@ -137,7 +137,7 @@ __device__ void st_cuda_klines(int idx, Kline* inputK, float factor, int start, 
         
         inputK[i].SuperTrendValue = (inputK[i].STDirection == -1) ? inputK[i].StDown : inputK[i].StUp;
 
-        printf("st_cuda_klines, stock number: %d, %dth StUp: %f, StDown: %f, SuperTrendValue: %f, STDirection: %d, Action: %d\n", idx, i,
-            inputK[i].StUp, inputK[i].StDown, inputK[i].SuperTrendValue, inputK[i].STDirection, inputK[i].Action);
+        //printf("st_cuda_klines, stock number: %d, %dth StUp: %f, StDown: %f, SuperTrendValue: %f, STDirection: %d, Action: %d\n", idx, i,
+        //    inputK[i].StUp, inputK[i].StDown, inputK[i].SuperTrendValue, inputK[i].STDirection, inputK[i].Action);
     }
 }

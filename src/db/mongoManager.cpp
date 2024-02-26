@@ -5,21 +5,22 @@
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
 
-MongoManager::MongoManager(const std::string uriStr) {
-    this->uriStr = uriStr;
-
-    const auto uri = mongocxx::uri{ this->uriStr.c_str() };
+MongoManager::MongoManager(const std::string uriStr):uriStr(uriStr), mongoPool(mongocxx::uri{ this->uriStr.c_str() }){
+    // this->uriStr = uriStr;
+    // const auto uri = mongocxx::uri{ this->uriStr.c_str() };
     // Set the version of the Stable API on the client.
-    mongocxx::options::client client_options;
-    const auto api = mongocxx::options::server_api{ mongocxx::options::server_api::version::k_version_1 };
-    client_options.server_api_opts(api);
-
+    // mongocxx::options::client client_options;
+    // const auto api = mongocxx::options::server_api{ mongocxx::options::server_api::version::k_version_1 };
+    // client_options.server_api_opts(api);
     // Setup the connection and get a handle on the "admin" database.
-    this->mongoClient = mongocxx::client{ uri, client_options };
+    // this->mongoClient = mongocxx::client{ uri, client_options };
+    // this->mongoPool = mongocxx::pool{ uri };
 };
 
 void MongoManager::GetSynedFlag() {
-    auto mongoDB = this->mongoClient["marketSyncFlag"];
+    auto client = this->mongoPool.acquire();
+    auto mongoDB = (*client)["marketSyncFlag"];
+
     // Ping the database.
     const auto ping_cmd = make_document(kvp("ping", 1));
     mongoDB.run_command(ping_cmd.view());
@@ -44,7 +45,8 @@ void MongoManager::GetSynedFlag() {
 }
 
 void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList) {
-    auto db = this->mongoClient[dbName.c_str()];
+    auto client = this->mongoPool.acquire();
+    auto db = (*client)[dbName.c_str()];
     auto col = db[colName.c_str()];
     auto cursor_filtered = 
         col.find({ make_document(kvp("kline.starttime", make_document(kvp("$gte", startTime), kvp("$lt", endTime)))) });
@@ -57,11 +59,11 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
             klineInst.Id[i] = oidBytesVec[i];
         }
 
-        std::cout << "OID in hex: ";
-        for (int i = 0; i < 12; ++i) {
-            std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(klineInst.Id[i]);
-        }
-        std::cout << std::endl;
+        // std::cout << "OID in hex: ";
+        //for (int i = 0; i < 12; ++i) {
+        //    std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(klineInst.Id[i]);
+        //}
+        //std::cout << std::dec << std::endl;
 
         auto klineContent = doc["kline"];
         klineInst.StartTime = klineContent["starttime"].get_int64().value;
@@ -177,9 +179,9 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
 
 void MongoManager::BulkWriteByIds(std::string dbName, std::string colName, std::vector<Kline>& rawData) {
     // locate the coll
-    auto db = this->mongoClient[dbName.c_str()];
+    auto client = this->mongoPool.acquire();
+    auto db = (*client)[dbName.c_str()];
     auto col = db[colName.c_str()];
-    
 
     // create bulk
     auto bulk = col.create_bulk_write();

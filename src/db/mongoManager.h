@@ -8,6 +8,7 @@
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/uri.hpp>
+#include <mongocxx/pool.hpp>
 
 #include <dtos/kline.h>
 
@@ -18,7 +19,7 @@ using bsoncxx::builder::basic::kvp;
 
 class MongoManager {
 public:
-    MongoManager(const std::string uriStr);
+    MongoManager(std::string uriStr);
     
     void GetSynedFlag();
 
@@ -29,7 +30,8 @@ public:
 private:
     std::string uriStr;
     mongocxx::instance inst;
-    mongocxx::client mongoClient;
+    //mongocxx::client mongoClient;
+    mongocxx::pool mongoPool;
 };
 
 #endif
