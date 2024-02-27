@@ -57,7 +57,7 @@ int main()
             &BTP,
             strategyInstance,
             1640966400000,
-            1641311999000,
+            1642694399000,
             "marketInfo",
             allSymbols,
             interval);

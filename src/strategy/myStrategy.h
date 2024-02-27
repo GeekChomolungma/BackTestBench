@@ -11,6 +11,8 @@ public:
     void initialize() override;
 
     void onMarketData(std::vector<Kline>& data, std::vector<std::pair<int, int>>& dataIndexes) override;
+   
+    void onMarketData_HostBenchMark(std::vector<Kline>& data, std::vector<std::pair<int, int>>& dataIndexes);
 
     void onBar() override;
 
