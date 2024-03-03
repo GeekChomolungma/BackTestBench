@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <vector>
 #include <utility> // for std::pair
-#include <dtos/kline.h>
+#include <iostream>
 
 // includes CUDA Runtime
 #include <cuda_runtime.h>
@@ -10,6 +10,7 @@
 
 // indicator lib
 #include "indicator/ta.cuh"
+#include "dtos/kline.h"
 
 // includes, project
 #include <helper_cuda.h>
@@ -51,7 +52,7 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData, s
     checkCudaErrors(cudaMalloc((void**)&deviceRaw, nbytes));
     checkCudaErrors(cudaMalloc((void**)&deviceEma, n*sizeof(float)));
     checkCudaErrors(cudaMemset(deviceRaw, 255, nbytes));
-    checkCudaErrors(cudaMemset(deviceRaw, 0, n * sizeof(float)));
+    checkCudaErrors(cudaMemset(deviceEma, 0, n * sizeof(float)));
     checkCudaErrors(cudaMalloc((void**)&deviceStartInd, stockNumber*sizeof(int)));
     checkCudaErrors(cudaMemset(deviceStartInd, 0, stockNumber * sizeof(int)));
     checkCudaErrors(cudaMalloc((void**)&deviceEndInd, stockNumber * sizeof(int)));
@@ -80,15 +81,15 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData, s
     // asynchronously issue work to the GPU (all to stream 0)
     checkCudaErrors(cudaProfilerStart());
     sdkStartTimer(&timer);
-    cudaEventRecord(start, stream);
-    cudaMemcpyAsync(deviceRaw, rawData.data(), nbytes, cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(deviceStartInd, startIndexes, stockNumber * sizeof(int), cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(deviceEndInd, endIndexes, stockNumber * sizeof(int), cudaMemcpyHostToDevice, stream);
+    checkCudaErrors(cudaEventRecord(start, stream));
+    checkCudaErrors(cudaMemcpyAsync(deviceRaw, rawData.data(), nbytes, cudaMemcpyHostToDevice, stream));
+    checkCudaErrors(cudaMemcpyAsync(deviceStartInd, startIndexes, stockNumber * sizeof(int), cudaMemcpyHostToDevice, stream));
+    checkCudaErrors(cudaMemcpyAsync(deviceEndInd, endIndexes, stockNumber * sizeof(int), cudaMemcpyHostToDevice, stream));
     test_kernel <<<blocks, threads, 0, stream >>> (deviceRaw, deviceEma, stockNumber, deviceStartInd, deviceEndInd, 10, 0.2);
-    cudaMemcpyAsync(rawData.data(), deviceRaw, nbytes, cudaMemcpyDeviceToHost, stream);
+    checkCudaErrors(cudaMemcpyAsync(rawData.data(), deviceRaw, nbytes, cudaMemcpyDeviceToHost, stream));
     std::vector<float> hostEma(n);
-    cudaMemcpyAsync(hostEma.data(), deviceEma, n * sizeof(float), cudaMemcpyDeviceToHost, stream);
-    cudaEventRecord(stop, stream);
+    checkCudaErrors(cudaMemcpyAsync(hostEma.data(), deviceEma, n * sizeof(float), cudaMemcpyDeviceToHost, stream));
+    checkCudaErrors(cudaEventRecord(stop, stream));
     sdkStopTimer(&timer);
     checkCudaErrors(cudaProfilerStop());
 
@@ -115,9 +116,17 @@ void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData, s
     checkCudaErrors(cudaFree(deviceEma));
     checkCudaErrors(cudaFree(deviceStartInd));
     checkCudaErrors(cudaFree(deviceEndInd));
-    cudaStreamDestroy(stream);
+    checkCudaErrors(cudaStreamDestroy(stream));
     delete[] startIndexes;
     delete[] endIndexes;
+
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        std::cerr << "CUDA error in myStrategy.cu file: " << cudaGetErrorString(error) << std::endl;
+    }
+    else {
+        std::cout << "CUDA success" << std::endl;
+    }
 
     return;
    /* exit(bFinalResults ? EXIT_SUCCESS : EXIT_FAILURE);*/

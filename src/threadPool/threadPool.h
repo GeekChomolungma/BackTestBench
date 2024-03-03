@@ -1,3 +1,6 @@
+#ifndef THREADPOOL_BACKTEST_H
+#define THREADPOOL_BACKTEST_H
+
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
 #include <boost/thread/thread.hpp>
@@ -30,3 +33,5 @@ private:
     boost::thread_group workerGroup;
     boost::thread* serviceThread;
 };
+
+#endif // !THREADPOOL_BACKTEST_H

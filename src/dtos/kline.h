@@ -1,7 +1,7 @@
 #ifndef KLINE_H
 #define KLINE_H
 
-#include <string>
+#include <cstdint>
 
 class Kline {
 public:

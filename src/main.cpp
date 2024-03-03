@@ -16,11 +16,13 @@
 
 #include "platform/platform.h"
 #include "strategy/myStrategy.h"
+//#include <chrono>
+//#include <thread>
 
 #ifdef _WIN32
     // Windows-specific includes and definitions
-    #include "matplotlibcpp.h"
-    namespace plt = matplotlibcpp;
+    // #include "matplotlibcpp.h"
+    // namespace plt = matplotlibcpp;
 #else
 #include <cassert>
 // Other non-Windows includes and definitions
@@ -44,7 +46,7 @@ int main()
 
     // back test platform
     BacktestingPlatform BTP(uriCfg);
-    BTP.dbManager.GetSynedFlag();
+    //BTP.dbManager.GetSynedFlag();
 
     int64_t startTime = 0; // not used yet
     int64_t endTime = 0; // not used yet
@@ -57,7 +59,7 @@ int main()
             &BTP,
             strategyInstance,
             1640966400000,
-            1642694399000,
+            1642694399000,//1641398399000,
             "marketInfo",
             allSymbols,
             interval);

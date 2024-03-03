@@ -9,9 +9,10 @@
 #include <mongocxx/instance.hpp>
 #include <mongocxx/uri.hpp>
 #include <mongocxx/pool.hpp>
+#include <mongocxx/exception/exception.hpp>
 
-#include <dtos/kline.h>
-
+#include "dtos/kline.h"
+#include "dtos/settlementItem.h"
 
 using bsoncxx::to_json;
 using bsoncxx::builder::basic::make_document;
@@ -26,6 +27,8 @@ public:
     void GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList);
 
     void BulkWriteByIds(std::string dbName, std::string colName, std::vector<Kline>& rawData);
+
+    std::string SetSettlementItems(std::string dbName, std::string colName,SettlementItem& data);
 
 private:
     std::string uriStr;

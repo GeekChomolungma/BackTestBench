@@ -3,6 +3,7 @@
 
 #include "baseStrategy.h"
 #include "dtos/kline.h"
+#include <string>
 
 class MyStrategy : public BaseStrategy<Kline> {
 public:

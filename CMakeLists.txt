@@ -1,6 +1,9 @@
 ﻿# CMakeList.txt : CMake project for BurninG, include source and define
 # project specific logic here.
 #
+
+#cmake -B [build directory] -S [source directory] -DCMAKE_TOOLCHAIN_FILE=D:/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake
+
 cmake_minimum_required (VERSION 3.8)
 
 project ("BackTestBench" LANGUAGES CXX CUDA)
@@ -61,6 +64,7 @@ file(GLOB_RECURSE SRC_FILES
     "src/strategy/*"
     "src/indicator/*"
     "src/threadPool/*"
+    "src/settlement/*"
 )
 list(APPEND SOURCES ${SRC_FILES})
 
@@ -98,25 +102,25 @@ if(WIN32)
     file(GLOB CUDA_LIBS "D:/cuda12sample/cuda-samples-12.0/cuda-samples-12.0/Common/lib/x64/*.lib")
     target_link_libraries(BackTestBench PRIVATE ${CUDA_LIBS})
 
-    # 设置Anaconda的路径
-    set(ANACONDA_PATH "D:/anaconda/release")
+    # # 设置Anaconda的路径
+    # set(ANACONDA_PATH "D:/anaconda/release")
 
-    # 手动设置Python解释器的路径
-    set(Python3_EXECUTABLE "${ANACONDA_PATH}/python.exe")
-    set(Python3_INCLUDE_DIR "${ANACONDA_PATH}/include")
-    set(Python3_LIBRARY "${ANACONDA_PATH}/libs/python311.lib") # 根据你的Python版本调整这里
+    # # 手动设置Python解释器的路径
+    # set(Python3_EXECUTABLE "${ANACONDA_PATH}/python.exe")
+    # set(Python3_INCLUDE_DIR "${ANACONDA_PATH}/include")
+    # set(Python3_LIBRARY "${ANACONDA_PATH}/libs/python311.lib") # 根据你的Python版本调整这里
 
-    # 找到Python库
-    find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+    # # 找到Python库
+    # find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
-    # 包含Python头文件
-    include_directories(${Python3_INCLUDE_DIRS})
+    # # 包含Python头文件
+    # include_directories(${Python3_INCLUDE_DIRS})
 
-    # 如果需要NumPy头文件，手动添加路径
-    include_directories("${ANACONDA_PATH}/Lib/site-packages/numpy/core/include")
-    target_link_libraries(BackTestBench PRIVATE ${Python3_LIBRARY})
+    # # 如果需要NumPy头文件，手动添加路径
+    # include_directories("${ANACONDA_PATH}/Lib/site-packages/numpy/core/include")
+    # target_link_libraries(BackTestBench PRIVATE ${Python3_LIBRARY})
 
-    target_include_directories(BackTestBench PRIVATE ${MATPLOTLIB_CPP_INCLUDE_DIRS})
+    # target_include_directories(BackTestBench PRIVATE ${MATPLOTLIB_CPP_INCLUDE_DIRS})
 else()
     # # Link against the found libraries
     # target_link_libraries(BackTestBench PRIVATE "/usr/local/lib/libbsoncxx.so") # ${BSONCXX_LIBRARIES})

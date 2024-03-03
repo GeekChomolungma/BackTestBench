@@ -178,51 +178,136 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
 }
 
 void MongoManager::BulkWriteByIds(std::string dbName, std::string colName, std::vector<Kline>& rawData) {
+    try{
+        // locate the coll
+        auto client = this->mongoPool.acquire();
+        auto db = (*client)[dbName.c_str()];
+        auto col = db[colName.c_str()];
+
+        // create bulk
+        auto bulk = col.create_bulk_write();
+        for (auto kline : rawData) {
+            bsoncxx::builder::basic::document filter_builder, update_builder;
+            bsoncxx::oid docID(&kline.Id[0], 12);
+
+            // format tr and atr to string
+            std::ostringstream oss1, oss2, oss3, oss4, oss5;
+            oss1 << std::fixed << std::setprecision(6) << kline.TrueRange;
+            oss2 << std::fixed << std::setprecision(6) << kline.AveTrueRange;
+            oss3 << std::fixed << std::setprecision(6) << kline.SuperTrendValue;
+            oss4 << std::fixed << std::setprecision(6) << kline.StUp;
+            oss5 << std::fixed << std::setprecision(6) << kline.StDown;
+            std::string trStr = oss1.str();
+            std::string atrStr = oss2.str();
+            std::string stStr = oss3.str();
+            std::string stUpStr = oss4.str();
+            std::string stDownStr = oss5.str();
+
+            // create filter and update
+            filter_builder.append(kvp("_id", docID));
+            update_builder.append(kvp("$set",
+                make_document(
+                    kvp("truerange", trStr),
+                    kvp("avetruerange", atrStr),
+                    kvp("supertrendvalue", stStr),
+                    kvp("stup", stUpStr),
+                    kvp("stdown", stDownStr),
+                    kvp("stdirection", kline.STDirection),
+                    kvp("action", kline.Action)
+                )
+            ));
+            mongocxx::model::update_one upsert_op(filter_builder.view(), update_builder.view());
+            upsert_op.upsert(true);
+
+            bulk.append(upsert_op);
+        }
+        auto result = bulk.execute();
+
+        if (!result) {
+            std::cout << "create_bulk_write failed!!!\n" << std::endl;
+        }
+    }
+    catch (const mongocxx::exception& e) {
+        std::cout << "BulkWriteByIds, An exception occurred: " << e.what() << std::endl;
+    }
+    catch (const std::runtime_error& e) {
+        std::cerr << "runtime error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "error exception: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cerr << "unknown error!" << std::endl;
+    }
+}
+
+std::string MongoManager::SetSettlementItems(std::string dbName, std::string colName, SettlementItem& data) {
     // locate the coll
     auto client = this->mongoPool.acquire();
     auto db = (*client)[dbName.c_str()];
     auto col = db[colName.c_str()];
+    std::cout << "SetSettlementItems: " + colName + "\n" << std::endl;
 
-    // create bulk
-    auto bulk = col.create_bulk_write();
-    for (auto kline : rawData) {
-        bsoncxx::builder::basic::document filter_builder, update_builder;
-        bsoncxx::oid docID(&kline.Id[0], 12);
+    std::string symbol = data.Symbol;
+    std::string interval = data.Interval;
 
-        // format tr and atr to string
-        std::ostringstream oss1, oss2, oss3, oss4, oss5;
-        oss1 << std::fixed << std::setprecision(6) << kline.TrueRange;
-        oss2 << std::fixed << std::setprecision(6) << kline.AveTrueRange;
-        oss3 << std::fixed << std::setprecision(6) << kline.SuperTrendValue;
-        oss4 << std::fixed << std::setprecision(6) << kline.StUp;
-        oss5 << std::fixed << std::setprecision(6) << kline.StDown;
-        std::string trStr = oss1.str();
-        std::string atrStr = oss2.str();
-        std::string stStr = oss3.str();
-        std::string stUpStr = oss4.str();
-        std::string stDownStr = oss5.str();
-    
-        // create filter and update
-        filter_builder.append(kvp("_id", docID));
-        update_builder.append(kvp("$set", 
-            make_document(
-                kvp("truerange", trStr),
-                kvp("avetruerange", atrStr),
-                kvp("supertrendvalue", stStr),
-                kvp("stup", stUpStr),
-                kvp("stdown", stDownStr),
-                kvp("stdirection", kline.STDirection),
-                kvp("action", kline.Action)
-            )
-        ));
-        mongocxx::model::update_one upsert_op(filter_builder.view(), update_builder.view());
-        upsert_op.upsert(true);
+    std::ostringstream oss1, oss2, oss3, oss4, oss5;
+    oss1 << std::fixed << std::setprecision(6) << data.ExecPrice;
+    oss2 << std::fixed << std::setprecision(6) << data.ExecVolume;
+    oss3 << std::fixed << std::setprecision(6) << data.ProfitValue;
+    oss4 << std::fixed << std::setprecision(6) << data.SumValue;
+    oss5 << std::fixed << std::setprecision(6) << data.SumAmout;
+    std::string ExecPriceStr = oss1.str();
+    std::string ExecVolumeStr = oss2.str();
+    std::string ProfitValueStr = oss3.str();
+    std::string SumValueStr = oss4.str();
+    std::string SumAmoutStr = oss5.str();
+    std::cout << "ready to builder::basic: " + colName + "\n" << std::endl;
 
-        bulk.append(upsert_op);
+    auto docValueBuilder = bsoncxx::builder::basic::document{};
+    docValueBuilder.append(
+        kvp("start_time", data.StartTime),
+        kvp("end_time", data.EndTime),
+        kvp("symbol", symbol),
+        kvp("interval", interval),
+        kvp("action", data.Action),
+        kvp("tradeID", data.TradeID),
+        kvp("execTime", data.ExecTime),
+        kvp("exec_price", ExecPriceStr),
+        kvp("exec_volume", ExecVolumeStr),
+        kvp("profit_value", ProfitValueStr),
+        kvp("sum_value", SumValueStr),
+        kvp("sum_amout", SumAmoutStr));
+
+    if (!data.PreviousId.empty()) {
+        bsoncxx::oid prevID(data.PreviousId);
+        docValueBuilder.append(kvp("prevId", prevID));
     }
-    auto result = bulk.execute();
+    bsoncxx::document::value InsertedDoc = docValueBuilder.extract();
 
-    if (!result) {
-        std::cout << "create_bulk_write failed!!!" << std::endl;
+    // We choose to move in our document here, which transfers ownership to insert_one()
+    try {
+        std::cout << "ready to insert_one: " + colName + "\n" << std::endl;
+        auto res = col.insert_one(std::move(InsertedDoc));
+
+        if (!res) {
+            std::cout << "Unacknowledged write. No id available." << std::endl;
+            return "";
+        }
+
+        if (res->inserted_id().type() == bsoncxx::type::k_oid) {
+            bsoncxx::oid id = res->inserted_id().get_oid().value;
+            std::string id_str = id.to_string();
+            std::cout << "Inserted id: " << id_str << std::endl;
+            return id_str;
+        }
+        else {
+            std::cout << "Inserted id was not an OID type" << std::endl;
+            return "";
+        }
+    }
+    catch (const mongocxx::exception& e) {
+        std::cout << "An exception occurred: " << e.what() << std::endl;
+        return "";
     }
 }
