@@ -3,6 +3,7 @@
 #include <sstream>
 #include <algorithm> // For std::max
 #include <chrono>
+#include <cmath>
 
 void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData, std::vector<std::pair<int, int>>& dataIndexes);
 
