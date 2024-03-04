@@ -20,8 +20,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(WIN32)
     #set(Boost_NO_SYSTEM_PATHS ON)
     #set(Boost_NO_BOOST_CMAKE ON)  # 禁用 Boost 的 CMake 配置，以便使用自定义路径
-    set(BOOST_ROOT "D:/boost/boost_1_83_0")
-    set(BOOST_LIBRARYDIR "D:/boost/boost_1_83_0/stage/lib") # ${BOOST_ROOT}/stage/lib
+    #set(BOOST_ROOT "D:/boost/boost_1_83_0")
+    #set(BOOST_LIBRARYDIR "D:/boost/boost_1_83_0/stage/lib") # ${BOOST_ROOT}/stage/lib
     
     #find_package(mongocxx REQUIRED)
     find_package(libmongocxx REQUIRED)
@@ -31,9 +31,6 @@ if(WIN32)
     message("LIBMONGOCXX_LIBRARIES = ${LIBMONGOCXX_LIBRARIES}")
     message("LIBBSONCXX_INCLUDE_DIRS = ${LIBBSONCXX_INCLUDE_DIRS}")
     message("LIBBSONCXX_LIBRARIES = ${LIBBSONCXX_LIBRARIES}")
-
-    # matplot
-    find_path(MATPLOTLIB_CPP_INCLUDE_DIRS "matplotlibcpp.h")
 else()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(MONGOCXX REQUIRED libmongocxx)
@@ -79,6 +76,9 @@ find_package(Boost REQUIRED COMPONENTS thread)
 include_directories(${Boost_INCLUDE_DIRS})
 target_link_libraries(BackTestBench PRIVATE ${Boost_LIBRARIES})
 
+message("Boost_INCLUDE_DIRS = ${Boost_INCLUDE_DIRS}")
+message("Boost_LIBRARIES = ${Boost_LIBRARIES}")
+
 # # 使用 target_include_directories 而不是 include_directories
 # target_include_directories(BackTestBench PRIVATE ${Boost_INCLUDE_DIRS})
 # # 直接链接到 Boost imported targets
@@ -88,7 +88,6 @@ target_link_libraries(BackTestBench PRIVATE ${Boost_LIBRARIES})
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
 if(WIN32)
-  
     # Windows specific settings
     # set third part depedency
     # include_directories("D:/vcpkg/vcpkg/installed/x64-windows/include/bsoncxx/v_noabi")
@@ -101,6 +100,11 @@ if(WIN32)
     include_directories("D:/cuda12sample/cuda-samples-12.0/cuda-samples-12.0/Common")
     file(GLOB CUDA_LIBS "D:/cuda12sample/cuda-samples-12.0/cuda-samples-12.0/Common/lib/x64/*.lib")
     target_link_libraries(BackTestBench PRIVATE ${CUDA_LIBS})
+
+    
+    # attention: matplot should be build in Release not Debug
+    # matplot
+    # find_path(MATPLOTLIB_CPP_INCLUDE_DIRS "matplotlibcpp.h")
 
     # # 设置Anaconda的路径
     # set(ANACONDA_PATH "D:/anaconda/release")
