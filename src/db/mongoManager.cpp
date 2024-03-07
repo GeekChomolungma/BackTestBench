@@ -6,15 +6,6 @@ using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
 
 MongoManager::MongoManager(const std::string uriStr):uriStr(uriStr), mongoPool(mongocxx::uri{ this->uriStr.c_str() }){
-    // this->uriStr = uriStr;
-    // const auto uri = mongocxx::uri{ this->uriStr.c_str() };
-    // Set the version of the Stable API on the client.
-    // mongocxx::options::client client_options;
-    // const auto api = mongocxx::options::server_api{ mongocxx::options::server_api::version::k_version_1 };
-    // client_options.server_api_opts(api);
-    // Setup the connection and get a handle on the "admin" database.
-    // this->mongoClient = mongocxx::client{ uri, client_options };
-    // this->mongoPool = mongocxx::pool{ uri };
 };
 
 void MongoManager::GetSynedFlag() {
@@ -44,6 +35,122 @@ void MongoManager::GetSynedFlag() {
     }
 }
 
+void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline& klineInst) {
+    const auto& oidBytesVec = doc["_id"].get_oid().value.bytes();
+    for (size_t i = 0; i < 12; ++i) {
+        klineInst.Id[i] = oidBytesVec[i];
+    }
+
+    auto klineContent = doc["kline"];
+    klineInst.StartTime = klineContent["starttime"].get_int64().value;
+    klineInst.EndTime = klineContent["endtime"].get_int64().value;
+    bsoncxx::stdx::string_view symbolTmp = klineContent["symbol"].get_string().value;
+    std::string symbolStr(symbolTmp);
+    bsoncxx::stdx::string_view intervalTmp = klineContent["interval"].get_string().value;
+    std::string intervalStr(intervalTmp);
+
+#ifdef _WIN32
+    strcpy_s(klineInst.Symbol, symbolStr.c_str());
+    strcpy_s(klineInst.Interval, intervalStr.c_str());
+#else
+    strcpy(klineInst.Symbol, symbolStr.c_str());
+    strcpy(klineInst.Interval, intervalStr.c_str());
+#endif
+
+    bsoncxx::stdx::string_view openStrTmp = klineContent["open"].get_string().value;
+    klineInst.Open = std::stod(std::string(openStrTmp));
+
+    bsoncxx::stdx::string_view closeStrTmp = klineContent["close"].get_string().value;
+    klineInst.Close = std::stod(std::string(closeStrTmp));
+
+    bsoncxx::stdx::string_view highStrTmp = klineContent["high"].get_string().value;
+    klineInst.High = std::stod(std::string(highStrTmp));
+
+    bsoncxx::stdx::string_view lowStrTmp = klineContent["low"].get_string().value;
+    klineInst.Low = std::stod(std::string(lowStrTmp));
+
+    auto trElement = klineContent["truerange"];
+    if (trElement && trElement.type() == bsoncxx::type::k_double) {
+        klineInst.TrueRange = trElement.get_double().value;
+    }
+    else {
+        if (trElement && trElement.type() == bsoncxx::type::k_string) {
+            bsoncxx::stdx::string_view trTmp = trElement.get_string().value;
+            klineInst.TrueRange = std::stod(std::string(trTmp));
+        }
+        else {
+            klineInst.TrueRange = 0.0;
+        }
+    }
+
+    auto atrElement = klineContent["avetruerange"];
+    if (atrElement && atrElement.type() == bsoncxx::type::k_double) {
+        klineInst.AveTrueRange = atrElement.get_double().value;
+    }
+    else {
+        if (atrElement && atrElement.type() == bsoncxx::type::k_string) {
+            bsoncxx::stdx::string_view atrTmp = atrElement.get_string().value;
+            klineInst.AveTrueRange = std::stod(std::string(atrTmp));
+        }
+        else {
+            klineInst.AveTrueRange = 0.0;
+        }
+    }
+
+    auto stElement = klineContent["supertrendvalue"];
+    if (stElement && stElement.type() == bsoncxx::type::k_string) {
+        bsoncxx::stdx::string_view stTmp = stElement.get_string().value;
+        klineInst.SuperTrendValue = std::stod(std::string(stTmp));
+    }
+    else {
+        klineInst.SuperTrendValue = 0.0;
+    }
+
+    auto stupElement = klineContent["stup"];
+    if (stupElement && stupElement.type() == bsoncxx::type::k_string) {
+        bsoncxx::stdx::string_view stupTmp = stupElement.get_string().value;
+        klineInst.StUp = std::stod(std::string(stupTmp));
+    }
+    else {
+        klineInst.StUp = 0.0;
+    }
+
+    auto stdownElement = klineContent["stdown"];
+    if (stdownElement && stdownElement.type() == bsoncxx::type::k_string) {
+        bsoncxx::stdx::string_view stdownTmp = stdownElement.get_string().value;
+        klineInst.StDown = std::stod(std::string(stdownTmp));
+    }
+    else {
+        klineInst.StDown = 0.0;
+    }
+
+    auto dirElement = klineContent["stdirection"];
+    if (dirElement && dirElement.type() == bsoncxx::type::k_int32) {
+        klineInst.STDirection = dirElement.get_int32().value;
+    }
+    else {
+        klineInst.STDirection = 0;
+    }
+
+    auto actElement = klineContent["action"];
+    if (actElement && actElement.type() == bsoncxx::type::k_int32) {
+        klineInst.Action = actElement.get_int32().value;
+    }
+    else {
+        klineInst.Action = 0;
+    }
+
+    bsoncxx::stdx::string_view volStrTmp = klineContent["volume"].get_string().value;
+    klineInst.Volume = std::stod(std::string(volStrTmp));
+
+    klineInst.TradeNum = klineContent["tradenum"].get_int64();
+    klineInst.IsFinal = klineContent["isfinal"].get_bool();
+
+    bsoncxx::stdx::string_view qutovStrTmp = klineContent["quotevolume"].get_string().value;
+    klineInst.QuoteVolume = std::stod(std::string(qutovStrTmp));
+
+}
+
 void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList) {
     auto client = this->mongoPool.acquire();
     auto db = (*client)[dbName.c_str()];
@@ -51,128 +158,9 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
     auto cursor_filtered = 
         col.find({ make_document(kvp("kline.starttime", make_document(kvp("$gte", startTime), kvp("$lt", endTime)))) });
 
-    for (auto doc : cursor_filtered) {        
+    for (auto&& doc : cursor_filtered) {        
         Kline klineInst;
-
-        const auto& oidBytesVec = doc["_id"].get_oid().value.bytes();
-        for (size_t i = 0; i < 12; ++i) {
-            klineInst.Id[i] = oidBytesVec[i];
-        }
-
-        // std::cout << "OID in hex: ";
-        //for (int i = 0; i < 12; ++i) {
-        //    std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(klineInst.Id[i]);
-        //}
-        //std::cout << std::dec << std::endl;
-
-        auto klineContent = doc["kline"];
-        klineInst.StartTime = klineContent["starttime"].get_int64().value;
-        klineInst.EndTime = klineContent["endtime"].get_int64().value;
-        bsoncxx::stdx::string_view symbolTmp = klineContent["symbol"].get_string().value;
-        std::string symbolStr(symbolTmp);
-        bsoncxx::stdx::string_view intervalTmp = klineContent["interval"].get_string().value;
-        std::string intervalStr(intervalTmp);
-
-        #ifdef _WIN32
-            strcpy_s(klineInst.Symbol, symbolStr.c_str());
-            strcpy_s(klineInst.Interval, intervalStr.c_str());
-        #else
-            strcpy(klineInst.Symbol, symbolStr.c_str());
-            strcpy(klineInst.Interval, intervalStr.c_str());
-        #endif
-
-        bsoncxx::stdx::string_view openStrTmp = klineContent["open"].get_string().value;
-        klineInst.Open = std::stod(std::string(openStrTmp));
-
-        bsoncxx::stdx::string_view closeStrTmp = klineContent["close"].get_string().value;
-        klineInst.Close = std::stod(std::string(closeStrTmp));
-
-        bsoncxx::stdx::string_view highStrTmp = klineContent["high"].get_string().value;
-        klineInst.High = std::stod(std::string(highStrTmp));
-
-        bsoncxx::stdx::string_view lowStrTmp = klineContent["low"].get_string().value;
-        klineInst.Low = std::stod(std::string(lowStrTmp));
-
-        auto trElement = klineContent["truerange"];
-        if (trElement && trElement.type() == bsoncxx::type::k_double) {
-            klineInst.TrueRange = trElement.get_double().value;
-        }
-        else {
-            if (trElement && trElement.type() == bsoncxx::type::k_string) {
-                bsoncxx::stdx::string_view trTmp = trElement.get_string().value;
-                klineInst.TrueRange = std::stod(std::string(trTmp));
-            }
-            else {
-                klineInst.TrueRange = 0.0;
-            }
-        }
-       
-        auto atrElement = klineContent["avetruerange"];
-        if (atrElement && atrElement.type() == bsoncxx::type::k_double) {
-            klineInst.AveTrueRange = atrElement.get_double().value;
-        }
-        else {
-            if (atrElement && atrElement.type() == bsoncxx::type::k_string) {
-                bsoncxx::stdx::string_view atrTmp = atrElement.get_string().value;
-                klineInst.AveTrueRange = std::stod(std::string(atrTmp));
-            }
-            else {
-                klineInst.AveTrueRange = 0.0;
-            }
-        }
-
-        auto stElement = klineContent["supertrendvalue"];
-        if (stElement && stElement.type() == bsoncxx::type::k_string) {
-            bsoncxx::stdx::string_view stTmp = stElement.get_string().value;
-            klineInst.SuperTrendValue = std::stod(std::string(stTmp));
-        }
-        else {
-            klineInst.SuperTrendValue = 0.0;
-        }
-
-        auto stupElement = klineContent["stup"];
-        if (stupElement && stupElement.type() == bsoncxx::type::k_string) {
-            bsoncxx::stdx::string_view stupTmp = stupElement.get_string().value;
-            klineInst.StUp = std::stod(std::string(stupTmp));
-        }
-        else {
-            klineInst.StUp = 0.0;
-        }
-
-        auto stdownElement = klineContent["stdown"];
-        if (stdownElement && stdownElement.type() == bsoncxx::type::k_string) {
-            bsoncxx::stdx::string_view stdownTmp = stdownElement.get_string().value;
-            klineInst.StDown = std::stod(std::string(stdownTmp));
-        }
-        else {
-            klineInst.StDown = 0.0;
-        }
-
-        auto dirElement = klineContent["stdirection"];
-        if (dirElement && dirElement.type() == bsoncxx::type::k_int32) {
-            klineInst.STDirection = dirElement.get_int32().value;
-        }
-        else {
-            klineInst.STDirection = 0;
-        }
-
-        auto actElement = klineContent["action"];
-        if (actElement && actElement.type() == bsoncxx::type::k_int32) {
-            klineInst.Action = actElement.get_int32().value;
-        }
-        else {
-            klineInst.Action = 0;
-        }
-
-        bsoncxx::stdx::string_view volStrTmp = klineContent["volume"].get_string().value;
-        klineInst.Volume = std::stod(std::string(volStrTmp));
-
-        klineInst.TradeNum = klineContent["tradenum"].get_int64();
-        klineInst.IsFinal = klineContent["isfinal"].get_bool();
-
-        bsoncxx::stdx::string_view qutovStrTmp = klineContent["quotevolume"].get_string().value;
-        klineInst.QuoteVolume = std::stod(std::string(qutovStrTmp));
-
+        this->ParseKline(doc, klineInst);
         targetKlineList.push_back(klineInst);
     }
 }
@@ -186,7 +174,7 @@ void MongoManager::BulkWriteByIds(std::string dbName, std::string colName, std::
 
         // create bulk
         auto bulk = col.create_bulk_write();
-        for (auto kline : rawData) {
+        for (auto& kline : rawData) {
             bsoncxx::builder::basic::document filter_builder, update_builder;
             bsoncxx::oid docID(&kline.Id[0], 12);
 
@@ -309,5 +297,54 @@ std::string MongoManager::SetSettlementItems(std::string dbName, std::string col
     catch (const mongocxx::exception& e) {
         std::cout << "An exception occurred: " << e.what() << std::endl;
         return "";
+    }
+}
+
+void MongoManager::WatchKlineUpdate(std::string dbName, std::string colName, std::vector<Kline>& PreviousTwoKlines) {
+    auto client = this->mongoPool.acquire();
+    auto col = (*client)[dbName.c_str()][colName.c_str()];
+
+    mongocxx::options::change_stream options;
+    const std::chrono::milliseconds await_time{ 1000 };
+    options.max_await_time(await_time);
+
+    mongocxx::change_stream stream = col.watch(options);
+
+    int64_t FinishedStartTime = 0;
+    while (true) {
+        for (const auto& docEvent : stream) {
+            auto klineContent = docEvent["kline"];
+            int64_t currentStartTime = klineContent["starttime"].get_int64().value;
+            if (FinishedStartTime == 0) {
+                FinishedStartTime = currentStartTime;
+            }
+            else {
+                if (currentStartTime > FinishedStartTime){
+                    // FinishedStartTime finished updated
+                    // get the binding kline
+
+                    // sort decline to fetch the latest 2 fininished klines;
+                    mongocxx::options::find opts;
+                    opts.sort( make_document(kvp("kline.starttime", -1)) );
+                    opts.limit(2);
+                    auto cursor = col.find( make_document(kvp("kline.starttime",make_document(kvp("$lt", currentStartTime)))), opts);
+
+                    for (auto&& doc : cursor) {
+                        Kline klineInst;
+                        try {
+                            this->ParseKline(doc, klineInst);
+                            PreviousTwoKlines.push_back(klineInst);
+                            std::reverse(PreviousTwoKlines.begin(), PreviousTwoKlines.end());
+                        }catch(const mongocxx::exception& e){
+                            std::cerr << "mongocxx error exception: " << e.what() << std::endl;
+                        }
+                    }
+                }
+            }
+        }
+        if (PreviousTwoKlines.size() != 0) {
+            return;
+        }
+        std::cout << dbName + "--" + colName + ": No new notifications. Trying again..." << std::endl;
     }
 }

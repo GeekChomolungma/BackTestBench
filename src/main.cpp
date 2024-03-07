@@ -64,7 +64,7 @@ int main()
             allSymbols,
             interval);
 
-        tp.enqueue(backTestTask);
+        tp.Enqueue(backTestTask);
     }
 
     return 0;

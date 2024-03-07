@@ -4,6 +4,9 @@
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
 #include <boost/thread/thread.hpp>
+#include <boost/thread/shared_mutex.hpp>
+#include <boost/thread/locks.hpp>
+
 #include <functional>
 #include <iostream>
 #include <memory> // std::unique_ptr
@@ -23,15 +26,18 @@ public:
     }
 
     template<class F>
-    void enqueue(F job) {
+    void Enqueue(F job) {
         ioService.post(job);
     }
+
+    void WaitAll();
 
 private:
     boost::asio::io_service ioService;
     std::unique_ptr<boost::asio::io_service::work> work;
     boost::thread_group workerGroup;
     boost::thread* serviceThread;
+    mutable boost::shared_mutex mutex;
 };
 
 #endif // !THREADPOOL_BACKTEST_H

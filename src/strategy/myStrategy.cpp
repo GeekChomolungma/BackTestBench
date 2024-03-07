@@ -102,11 +102,11 @@ void MyStrategy::onMarketData(std::vector<Kline>& rawData, std::vector<std::pair
 
     this->executeCUDACalculation(rawData, dataIndexes);
 
-    auto start = std::chrono::high_resolution_clock::now();
-    this->onMarketData_HostBenchMark(rawData, dataIndexes);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> elapsed = end - start;
-    std::cout << "onMarketData on Host, Elapsed time: " << elapsed.count() << " ms\n";
+    //auto start = std::chrono::high_resolution_clock::now();
+    //this->onMarketData_HostBenchMark(rawData, dataIndexes);
+    //auto end = std::chrono::high_resolution_clock::now();
+    //std::chrono::duration<double, std::milli> elapsed = end - start;
+    //std::cout << "onMarketData on Host, Elapsed time: " << elapsed.count() << " ms\n";
 }
 
 void MyStrategy::onMarketData_HostBenchMark(std::vector<Kline>& data, std::vector<std::pair<int, int>>& dataIndexes) {
@@ -128,9 +128,4 @@ void  MyStrategy::executeCUDACalculation(std::vector<Kline>& rawData, std::vecto
     int argc = 0;
     const char* argv[1] = { "My strategy start running!" };
     kernel_wrapper(0, argv, rawData, dataIndexes);
-    //int i = 0;
-    //for (auto kline : rawData) {
-    //    std::cout << i << "th kline Atr is " << kline.AveTrueRange << std::endl;
-    //    i++;
-    //}
 }
