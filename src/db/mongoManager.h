@@ -24,16 +24,19 @@ class MongoManager {
 public:
     MongoManager(std::string uriStr);
     
-    void GetSynedFlag();
+    int64_t GetSynedFlag(std::string dbName, std::string colName);
     
     void ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline& klineInst);
 
     void GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList);
 
+    void GetLatestKlines(int64_t endTime, int limit, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList);
+
     void BulkWriteByIds(std::string dbName, std::string colName, std::vector<Kline>& rawData);
 
     std::string SetSettlementItems(std::string dbName, std::string colName,SettlementItem& data);
 
+    // mongo should be deployed in replica mode
     void WatchKlineUpdate(std::string dbName, std::string colName, std::vector<Kline>& PreviousTwoKlines);
 
 private:

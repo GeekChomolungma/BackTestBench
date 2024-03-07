@@ -20,21 +20,27 @@ public:
     };
 
     template <typename T> void runStrategyTask(
-        BaseStrategy<T>* strategyInst, int64_t startTime, int64_t endTime, std::string dbName, std::vector<std::string> symbols, std::string interval
+        BaseStrategy<T>* strategyInst, std::string dbName, std::vector<std::string> symbols, std::string interval
     ) {
-        std::vector<T> targetData;
+        std::vector<Kline> targetData;
         std::vector<std::pair<int,int>> dataIndexes;
         std::vector<std::string> colNameList;
         int startIndex = 0;
-        
 
         for (auto s : symbols) {
             std::ostringstream oss;
             oss << "Binance-" << s << "-" << interval;
             std::string colName = oss.str();
             
-            this->dbManager.GetKline(startTime, endTime, dbName, colName, targetData);
-            std::cout << "GetKline colName:" << colName << ", size is:" << targetData.size() - startIndex << "\n" << std::endl;
+            //this->dbManager.GetKline(startTime, endTime, dbName, colName, targetData);
+
+            auto syncedTime = this->dbManager.GetSynedFlag("marketSyncFlag" , colName);
+
+            std::vector<Kline> fetchedDataPerCol;
+            this->dbManager.GetLatestKlines(syncedTime, 50, dbName, colName, fetchedDataPerCol);
+            targetData.insert(targetData.end(), fetchedDataPerCol.begin(), fetchedDataPerCol.end());
+
+            std::cout << "GetKline colName:" << colName << ", size is:" << fetchedDataPerCol.size() - startIndex << "\n" << std::endl;
             if (targetData.size() == startIndex) {
                 continue;
             }
@@ -44,16 +50,6 @@ public:
             dataIndexes.push_back(std::pair<int, int>(startIndex, endIndex));
             startIndex = targetData.size();
         }
-       
-        //int i = 0;
-        //for (auto dIndex : dataIndexes) {
-        //    for (int start = dIndex.first; start <= dIndex.second; start++) {
-        //        auto k = targetData[start];
-        //        std::cout << "Pending Calculate Collection: " << colNameList[i] << " " << start << " th Kline, start time is : " << k.StartTime << " open is : " << k.Open
-        //            << " close is: " << k.Close << " high is: " << k.High << " low is: " << k.Low << "\n" << std::endl;
-        //    }
-        //    i++;
-        //}
 
         // send orders
         try {
@@ -91,51 +87,51 @@ public:
     template <typename T> void runStrategyRealTime(
         BaseStrategy<T>* strategyInst, int64_t startTime, std::string dbName, std::vector<std::string> symbols, std::string interval
     ) {
-        std::vector<Kline> targetData;
-        std::vector<std::vector<Kline>&> watchDataGroup(symbols.size());
-        std::vector<std::pair<int, int>> dataIndexes;
-        std::vector<std::string> colNameList;
-        ThreadPool TpInterval(symbols.size());
-
-
-
-        auto i = 0;
-        for (auto s : symbols) {
-            std::ostringstream oss;
-            oss << "Binance-" << s << "-" << interval;
-            std::string colName = oss.str();
-            colNameList.push_back(colName);
-
-            std::vector<Kline> prevTwoKlines;
-            watchDataGroup[i] = prevTwoKlines;
-
-            auto realTimeUpdateWatchTask = boost::bind(&MongoManager::WatchKlineUpdate,
-                &this->dbManager,
-                dbName,
-                colName,
-                prevTwoKlines);
-
-            TpInterval.Enqueue(realTimeUpdateWatchTask);
-
-            i++
-        }
-        TpInterval.WaitAll();
-        
-        // combine watchDataGroup element to targetData
-        int startIndex = 0;
-        for (auto i = 0; i < symbols.size() i++) {
-            if (watchDataGroup[i].size() == 0) {
-                colNameList.erase(colNameList.begin() + i);
-                continue;
-            }
-            targetData.insert(targetData.end(), watchDataGroup[i].begin(), watchDataGroup[i].end());
-            
-            int endIndex = targetData.size() - 1;
-            dataIndexes.push_back(std::pair<int, int>(startIndex, endIndex));
-            startIndex = targetData.size();
-        }
-
+        std::cout << "runStrategyRealTime begin for interval: " + interval << std::endl;
         try {
+            std::vector<Kline> targetData;
+            std::vector<std::vector<Kline>> watchDataGroup(symbols.size());
+            std::vector<std::pair<int, int>> dataIndexes;
+            std::vector<std::string> colNameList;
+            ThreadPool TpInterval(symbols.size());
+
+            auto i = 0;
+            for (auto s : symbols) {
+                std::ostringstream oss;
+                oss << "Binance-" << s << "-" << interval;
+                std::string colName = oss.str();
+                colNameList.push_back(colName);
+
+                std::vector<Kline> prevTwoKlines;
+                watchDataGroup[i] = prevTwoKlines;
+
+                std::cout << "realTimeUpdateWatchTask begin for collection: " + colName << std::endl;
+                auto realTimeUpdateWatchTask = boost::bind(&MongoManager::WatchKlineUpdate,
+                    &(this->dbManager),
+                    dbName,
+                    colName,
+                    watchDataGroup[i]);
+
+                TpInterval.Enqueue(realTimeUpdateWatchTask);
+
+                i++;
+            }
+            TpInterval.WaitAll();
+
+            // combine watchDataGroup element to targetData
+            int startIndex = 0;
+            for (auto i = 0; i < symbols.size(); i++) {
+                if (watchDataGroup[i].size() == 0) {
+                    colNameList.erase(colNameList.begin() + i);
+                    continue;
+                }
+                targetData.insert(targetData.end(), watchDataGroup[i].begin(), watchDataGroup[i].end());
+            
+                int endIndex = targetData.size() - 1;
+                dataIndexes.push_back(std::pair<int, int>(startIndex, endIndex));
+                startIndex = targetData.size();
+            }
+
             // exec the calculation
             strategyInst->onMarketData(targetData, dataIndexes);
 
@@ -156,7 +152,7 @@ public:
             std::cerr << "exception: " << e.what() << std::endl;
         }
         catch (...) {
-            std::cerr << "unkown error:" << std::endl;
+            std::cerr << interval + " TpInterval start up with error:" << std::endl;
         }
     };
 

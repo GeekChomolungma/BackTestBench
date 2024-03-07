@@ -29,6 +29,9 @@
 #endif
 //
 
+void GenerateTestBench(BacktestingPlatform& BTP, 
+    const std::vector<std::string> allIntervals, const std::vector<std::string> allSymbols, 
+    int64_t startTime, int64_t endTime);
 
 int main()
 {
@@ -48,24 +51,41 @@ int main()
     BacktestingPlatform BTP(uriCfg);
     //BTP.dbManager.GetSynedFlag();
 
-    int64_t startTime = 0; // not used yet
-    int64_t endTime = 0; // not used yet
+    int64_t startTime = 1640966400000; // not used yet in MyStrategy
+    int64_t endTime = 1642694399000; // not used yet in MyStrategy
+    GenerateTestBench(BTP, allIntervals, allSymbols, startTime, endTime);
 
+    ThreadPool tpRealTime(allIntervals.size());
+    while (true) {
+        for (auto interval : allIntervals) {
+            MyStrategy* strategyInstance = new MyStrategy(startTime, endTime, "");
+            auto realTimeTask = boost::bind(&BacktestingPlatform::runStrategyRealTime<Kline>,
+                &BTP,
+                strategyInstance,
+                1640966400000,
+                "marketInfo",
+                allSymbols,
+                interval);
+
+            tpRealTime.Enqueue(realTimeTask);
+        }
+    }
+
+    return 0;
+}
+
+void GenerateTestBench(BacktestingPlatform& BTP, const std::vector<std::string> allIntervals, const std::vector<std::string> allSymbols, int64_t startTime, int64_t endTime) {
     // create a thread group and push task
-    ThreadPool tp(6);
+    ThreadPool tpBackTest(allIntervals.size());
     for (auto interval : allIntervals) {
         MyStrategy* strategyInstance = new MyStrategy(startTime, endTime, "");
         auto backTestTask = boost::bind(&BacktestingPlatform::runStrategyTask<Kline>,
             &BTP,
             strategyInstance,
-            1640966400000,
-            1642694399000,//1641398399000,
             "marketInfo",
             allSymbols,
             interval);
 
-        tp.Enqueue(backTestTask);
+        tpBackTest.Enqueue(backTestTask);
     }
-
-    return 0;
 }
