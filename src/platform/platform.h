@@ -37,14 +37,17 @@ public:
             auto syncedTime = this->dbManager.GetSynedFlag("marketSyncFlag" , colName);
 
             std::vector<Kline> fetchedDataPerCol;
-            this->dbManager.GetLatestKlines(syncedTime, 50, dbName, colName, fetchedDataPerCol);
-            targetData.insert(targetData.end(), fetchedDataPerCol.begin(), fetchedDataPerCol.end());
-
-            std::cout << "GetKline colName:" << colName << ", size is:" << fetchedDataPerCol.size() - startIndex << "\n" << std::endl;
-            if (targetData.size() == startIndex) {
+            this->dbManager.GetLatestSyncedKlines(syncedTime, 200, dbName, colName, fetchedDataPerCol);
+            std::cout << "GetKline colName:" << colName << ", size is:" << fetchedDataPerCol.size() << "\n" << std::endl;
+            if (fetchedDataPerCol.size() == 0) {
                 continue;
             }
+            
+            //for (auto data : fetchedDataPerCol) {
+            //    std::cout << "runStrategyTask: GetLatestSyncedKlines for Col: " + colName << " start time is: " << data.StartTime << "\n" << std::endl;
+            //}
 
+            targetData.insert(targetData.end(), fetchedDataPerCol.begin(), fetchedDataPerCol.end());
             colNameList.push_back(colName);
             int endIndex = targetData.size() - 1;
             dataIndexes.push_back(std::pair<int, int>(startIndex, endIndex));
@@ -105,8 +108,8 @@ public:
                 std::vector<Kline> prevTwoKlines;
                 watchDataGroup[i] = prevTwoKlines;
 
-                std::cout << "realTimeUpdateWatchTask begin for collection: " + colName << std::endl;
-                auto realTimeUpdateWatchTask = boost::bind(&MongoManager::WatchKlineUpdate,
+                std::cout << "realTimeUpdateWatchTask begin for collection: " + colName + "\n" << std::endl;
+                auto realTimeUpdateWatchTask = boost::bind(&MongoManager::GetKlineUpdate,
                     &(this->dbManager),
                     dbName,
                     colName,

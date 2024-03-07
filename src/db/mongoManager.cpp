@@ -1,6 +1,8 @@
 #include "db/mongoManager.h"
 #include <iomanip> // std::setw, std::setfill
 #include <sstream>
+#include <chrono>
+#include <thread>
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
@@ -24,7 +26,7 @@ int64_t MongoManager::GetSynedFlag(std::string dbName, std::string colName) {
             auto extractedValue = *find_one_result;
             auto eViewElement = extractedValue["starttime"];
             auto st = eViewElement.get_int64().value;
-            std::cout << "Got synced flag time:" << st << std::endl;
+            std::cout << "Got synced flag time:" << st << "\n" << std::endl;
             return st;
         }
         else {
@@ -169,27 +171,26 @@ void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbNa
     }
 }
 
-void MongoManager::GetLatestKlines(int64_t endTime, int limit, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList) {
+void MongoManager::GetLatestSyncedKlines(int64_t endTime, int limit, std::string dbName, std::string colName, std::vector<Kline>& fetchedDataPerCol) {
     auto client = this->mongoPool.acquire();
     auto col = (*client)[dbName.c_str()][colName.c_str()];
 
     mongocxx::options::find opts;
     opts.sort(make_document(kvp("kline.starttime", -1)));
     opts.limit(limit);
-    // mongocxx::v_noabi::cursor cursor_filtered = col.find(make_document(kvp("kline.starttime", make_document(kvp("$lte", endTime)))), opts);
-    bsoncxx::document::view_or_value filter;
-    if (endTime != 0) {
-        filter = make_document(kvp("kline.starttime", make_document(kvp("$lte", endTime))));
-    }
 
-    auto cursor_filtered = col.find(filter, opts);
+    bsoncxx::builder::basic::document filter;
+    if (endTime != 0) {
+        filter.append(kvp("kline.starttime", make_document(kvp("$lte", endTime))));
+    }
+    auto cursor_filtered = col.find(filter.view(), opts);
 
     for (auto&& doc : cursor_filtered) {
         Kline klineInst;
         this->ParseKline(doc, klineInst);
-        targetKlineList.push_back(klineInst);
-        std::reverse(targetKlineList.begin(), targetKlineList.end());
+        fetchedDataPerCol.push_back(klineInst);
     }
+    std::reverse(fetchedDataPerCol.begin(), fetchedDataPerCol.end());
 }
 
 void MongoManager::BulkWriteByIds(std::string dbName, std::string colName, std::vector<Kline>& rawData) {
@@ -361,13 +362,13 @@ void MongoManager::WatchKlineUpdate(std::string dbName, std::string colName, std
                             Kline klineInst;
                             try {
                                 this->ParseKline(doc, klineInst);
-                                PreviousTwoKlines.push_back(klineInst);
-                                std::reverse(PreviousTwoKlines.begin(), PreviousTwoKlines.end());
+                                PreviousTwoKlines.push_back(klineInst); 
                             }
                             catch (const mongocxx::exception& e) {
                                 std::cerr << "mongocxx error exception: " << e.what() << std::endl;
                             }
                         }
+                        std::reverse(PreviousTwoKlines.begin(), PreviousTwoKlines.end());
                     }
                 }
             }
@@ -388,5 +389,39 @@ void MongoManager::WatchKlineUpdate(std::string dbName, std::string colName, std
     }
     catch (...) {
         std::cerr << "WatchKlineUpdate unknown error!" << std::endl;
+    }
+}
+
+void MongoManager::GetKlineUpdate(std::string dbName, std::string colName, std::vector<Kline>& PreviousTwoKlines) {
+    try {
+        auto client = this->mongoPool.acquire();
+        auto col = (*client)[dbName.c_str()][colName.c_str()];
+
+        auto syncedStartTime = this->GetSynedFlag("marketSyncFlag", colName);
+        while (true) {
+            auto currentSyncedStartTime = this->GetSynedFlag("marketSyncFlag", colName);
+            if (syncedStartTime < currentSyncedStartTime) {
+                std::vector<Kline> latestKlines(2);
+                this->GetLatestSyncedKlines(currentSyncedStartTime, 2, dbName, colName, latestKlines);
+                if (latestKlines.size() != 2) {
+                    continue;
+                }
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::cout << colName + ": GetKlineUpdate, 5 seconds after, continue... \n" << std::endl;
+        }
+    }
+    catch (const mongocxx::exception& e) {
+        std::cerr << "GetKlineUpdate, An exception occurred: " << e.what() << std::endl;
+    }
+    catch (const std::runtime_error& e) {
+        std::cerr << "GetKlineUpdate runtime error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "GetKlineUpdate error exception: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cerr << "GetKlineUpdate unknown error!" << std::endl;
     }
 }

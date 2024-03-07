@@ -30,11 +30,13 @@ public:
 
     void GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList);
 
-    void GetLatestKlines(int64_t endTime, int limit, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList);
+    void GetLatestSyncedKlines(int64_t endTime, int limit, std::string dbName, std::string colName, std::vector<Kline>& fetchedDataPerCol);
 
     void BulkWriteByIds(std::string dbName, std::string colName, std::vector<Kline>& rawData);
 
     std::string SetSettlementItems(std::string dbName, std::string colName,SettlementItem& data);
+
+    void GetKlineUpdate(std::string dbName, std::string colName, std::vector<Kline>& PreviousTwoKlines); // polling
 
     // mongo should be deployed in replica mode
     void WatchKlineUpdate(std::string dbName, std::string colName, std::vector<Kline>& PreviousTwoKlines);
