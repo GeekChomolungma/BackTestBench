@@ -27,9 +27,9 @@ int64_t MongoManager::GetSynedFlag(std::string dbName, std::string colName) {
             auto extractedValue = *find_one_result;
             auto eViewElement = extractedValue["starttime"];
             auto st = eViewElement.get_int64().value;
-            std::ostringstream ss;
-            ss << "Got synced flag time:" << st << "\n" << std::endl;
-            std::cout << ss.str();
+            //std::ostringstream ss;
+            //ss << "Got synced flag time:" << st << "\n" << std::endl;
+            //std::cout << ss.str();
             return st;
         }
         else {
@@ -78,7 +78,7 @@ void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline
     bsoncxx::stdx::string_view lowStrTmp = klineContent["low"].get_string().value;
     klineInst.Low = std::stod(std::string(lowStrTmp));
 
-    auto trElement = klineContent["truerange"];
+    auto trElement = doc["truerange"];
     if (trElement && trElement.type() == bsoncxx::type::k_double) {
         klineInst.TrueRange = trElement.get_double().value;
     }
@@ -92,7 +92,7 @@ void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline
         }
     }
 
-    auto atrElement = klineContent["avetruerange"];
+    auto atrElement = doc["avetruerange"];
     if (atrElement && atrElement.type() == bsoncxx::type::k_double) {
         klineInst.AveTrueRange = atrElement.get_double().value;
     }
@@ -106,7 +106,7 @@ void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline
         }
     }
 
-    auto stElement = klineContent["supertrendvalue"];
+    auto stElement = doc["supertrendvalue"];
     if (stElement && stElement.type() == bsoncxx::type::k_string) {
         bsoncxx::stdx::string_view stTmp = stElement.get_string().value;
         klineInst.SuperTrendValue = std::stod(std::string(stTmp));
@@ -115,7 +115,7 @@ void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline
         klineInst.SuperTrendValue = 0.0;
     }
 
-    auto stupElement = klineContent["stup"];
+    auto stupElement = doc["stup"];
     if (stupElement && stupElement.type() == bsoncxx::type::k_string) {
         bsoncxx::stdx::string_view stupTmp = stupElement.get_string().value;
         klineInst.StUp = std::stod(std::string(stupTmp));
@@ -124,7 +124,7 @@ void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline
         klineInst.StUp = 0.0;
     }
 
-    auto stdownElement = klineContent["stdown"];
+    auto stdownElement = doc["stdown"];
     if (stdownElement && stdownElement.type() == bsoncxx::type::k_string) {
         bsoncxx::stdx::string_view stdownTmp = stdownElement.get_string().value;
         klineInst.StDown = std::stod(std::string(stdownTmp));
@@ -133,7 +133,7 @@ void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline
         klineInst.StDown = 0.0;
     }
 
-    auto dirElement = klineContent["stdirection"];
+    auto dirElement = doc["stdirection"];
     if (dirElement && dirElement.type() == bsoncxx::type::k_int32) {
         klineInst.STDirection = dirElement.get_int32().value;
     }
@@ -141,7 +141,7 @@ void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline
         klineInst.STDirection = 0;
     }
 
-    auto actElement = klineContent["action"];
+    auto actElement = doc["action"];
     if (actElement && actElement.type() == bsoncxx::type::k_int32) {
         klineInst.Action = actElement.get_int32().value;
     }
@@ -418,6 +418,11 @@ void MongoManager::GetKlineUpdate(std::string dbName, std::string colName, std::
                     std::this_thread::sleep_for(std::chrono::seconds(5));
                     continue;
                 }
+                PreviousTwoKlines.insert(PreviousTwoKlines.end(), latestKlines.begin(), latestKlines.end());
+                std::ostringstream ss;
+                ss << colName + " PreviousTwoKlines size is: " << PreviousTwoKlines.size() << "\n" << std::endl;
+                std::cout << ss.str();
+
                 return;
             }
             std::this_thread::sleep_for(std::chrono::seconds(5));

@@ -119,7 +119,7 @@ public:
                     &(this->dbManager),
                     dbName,
                     colName,
-                    watchDataGroup[i]);
+                    boost::ref(watchDataGroup[i]));
 
                 TpInterval.Enqueue(realTimeUpdateWatchTask);
 
@@ -129,9 +129,15 @@ public:
 
             // combine watchDataGroup element to targetData
             int startIndex = 0;
+            int eraseOffset = 0;
             for (auto i = 0; i < symbols.size(); i++) {
+                std::ostringstream ss;
+                ss << colNameList[i - eraseOffset] + " watchDataGroup i: " << i << " size is: " << watchDataGroup[i].size() << "\n" << std::endl;
+                std::cout << ss.str();
+
                 if (watchDataGroup[i].size() == 0) {
-                    colNameList.erase(colNameList.begin() + i);
+                    colNameList.erase(colNameList.begin() + i - eraseOffset);
+                    eraseOffset++;
                     continue;
                 }
                 targetData.insert(targetData.end(), watchDataGroup[i].begin(), watchDataGroup[i].end());
@@ -139,6 +145,9 @@ public:
                 int endIndex = targetData.size() - 1;
                 dataIndexes.push_back(std::pair<int, int>(startIndex, endIndex));
                 startIndex = targetData.size();
+                std::ostringstream ss2;
+                ss2 << "dataIndexes size is: " << dataIndexes.size() << "\n" << std::endl;
+                std::cout << ss2.str();
             }
 
             // exec the calculation
@@ -150,7 +159,7 @@ public:
             // update Kline one by one with Bulk
             int colNameIndex = 0;
             std::ostringstream ss;
-            ss << interval + " dataIndexes size is: " << targetData.size() << "\n" << std::endl;
+            ss << interval + " targetData size is: " << targetData.size() << "\n" << std::endl;
             std::cout << ss.str();
             
             for (auto dIndex : dataIndexes) {
