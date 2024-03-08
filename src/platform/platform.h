@@ -4,8 +4,8 @@
 #include "threadPool/threadPool.h"
 
 #include <sstream>
-#include <iomanip> // std::setw, std::setfill
 #include <iostream>
+#include <iomanip> // std::setw, std::setfill
 #include <map>
 
 
@@ -38,7 +38,9 @@ public:
 
             std::vector<Kline> fetchedDataPerCol;
             this->dbManager.GetLatestSyncedKlines(syncedTime, 200, dbName, colName, fetchedDataPerCol);
-            std::cout << "GetKline colName:" << colName << ", size is:" << fetchedDataPerCol.size() << "\n" << std::endl;
+            std::ostringstream ss;
+            ss << "GetKline colName:" << colName << ", size is:" << fetchedDataPerCol.size() << "\n" << std::endl;
+            std::cout << ss.str();
             if (fetchedDataPerCol.size() == 0) {
                 continue;
             }
@@ -64,7 +66,10 @@ public:
 
             // update Kline one by one with Bulk
             int colNameIndex = 0;
-            std::cout << interval + " dataIndexes size is: " << targetData.size() << "\n" << std::endl;
+            std::ostringstream ss;
+             ss << interval + " dataIndexes size is: " << targetData.size() << "\n" << std::endl;
+            std::cout << ss.str();
+           
             for (auto dIndex : dataIndexes) {
                 //Kline kline0 = static_cast<Kline>(targetData[dIndex.first]);
                 //std::cout << "Write Back collection: " << colNameList[colNameIndex] << " first kline ID is:";
@@ -107,8 +112,9 @@ public:
 
                 std::vector<Kline> prevTwoKlines;
                 watchDataGroup[i] = prevTwoKlines;
-
-                std::cout << "realTimeUpdateWatchTask begin for collection: " + colName + "\n" << std::endl;
+                std::ostringstream ss;
+                ss << "realTimeUpdateWatchTask begin for collection: " + colName + "\n" << std::endl;
+                std::cout << ss.str();
                 auto realTimeUpdateWatchTask = boost::bind(&MongoManager::GetKlineUpdate,
                     &(this->dbManager),
                     dbName,
@@ -143,7 +149,10 @@ public:
 
             // update Kline one by one with Bulk
             int colNameIndex = 0;
-            std::cout << interval + " dataIndexes size is: " << targetData.size() << "\n" << std::endl;
+            std::ostringstream ss;
+            ss << interval + " dataIndexes size is: " << targetData.size() << "\n" << std::endl;
+            std::cout << ss.str();
+            
             for (auto dIndex : dataIndexes) {
                 std::vector<T> unitData(targetData.begin() + dIndex.first, targetData.begin() + dIndex.second + 1);
                 this->dbManager.BulkWriteByIds(dbName, colNameList[colNameIndex], unitData);
@@ -163,7 +172,10 @@ public:
     template <typename T> void runSettlement(std::vector<T>& targetData, std::vector<std::string>& colNameList, std::vector<std::pair<int, int>>& dataIndexes){
         int colNameIndex = 0;
         for (auto dIndex : dataIndexes) {
-            std::cout << "RunSettlement, colName:" + colNameList[colNameIndex] << "\n" << std::endl;
+            std::ostringstream ss;
+            ss << "RunSettlement, colName:" + colNameList[colNameIndex] << "\n" << std::endl;
+            std::cout << ss.str();
+
             std::vector<T> unitData(targetData.begin() + dIndex.first, targetData.begin() + dIndex.second + 1);
             settleInstance.ExecSettlement(unitData, colNameList[colNameIndex]);
             colNameIndex++;

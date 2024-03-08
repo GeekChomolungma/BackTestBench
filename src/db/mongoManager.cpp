@@ -1,6 +1,7 @@
 #include "db/mongoManager.h"
 #include <iomanip> // std::setw, std::setfill
 #include <sstream>
+#include <iostream>
 #include <chrono>
 #include <thread>
 
@@ -26,7 +27,9 @@ int64_t MongoManager::GetSynedFlag(std::string dbName, std::string colName) {
             auto extractedValue = *find_one_result;
             auto eViewElement = extractedValue["starttime"];
             auto st = eViewElement.get_int64().value;
-            std::cout << "Got synced flag time:" << st << "\n" << std::endl;
+            std::ostringstream ss;
+            ss << "Got synced flag time:" << st << "\n" << std::endl;
+            std::cout << ss.str();
             return st;
         }
         else {
@@ -191,6 +194,10 @@ void MongoManager::GetLatestSyncedKlines(int64_t endTime, int limit, std::string
         fetchedDataPerCol.push_back(klineInst);
     }
     std::reverse(fetchedDataPerCol.begin(), fetchedDataPerCol.end());
+
+    std::ostringstream ss;
+    ss << "GetLatestSyncedKlines, fetchedDataPerCol size is: " << fetchedDataPerCol.size() << "\n" << std::endl;
+    std::cout << ss.str();
 }
 
 void MongoManager::BulkWriteByIds(std::string dbName, std::string colName, std::vector<Kline>& rawData) {
@@ -262,7 +269,9 @@ std::string MongoManager::SetSettlementItems(std::string dbName, std::string col
     auto client = this->mongoPool.acquire();
     auto db = (*client)[dbName.c_str()];
     auto col = db[colName.c_str()];
-    std::cout << "SetSettlementItems: " + colName + "\n" << std::endl;
+    std::ostringstream ss;
+    ss << "SetSettlementItems: " + colName + "\n" << std::endl;
+    std::cout << ss.str();
 
     std::string symbol = data.Symbol;
     std::string interval = data.Interval;
@@ -278,7 +287,6 @@ std::string MongoManager::SetSettlementItems(std::string dbName, std::string col
     std::string ProfitValueStr = oss3.str();
     std::string SumValueStr = oss4.str();
     std::string SumAmoutStr = oss5.str();
-    std::cout << "ready to builder::basic: " + colName + "\n" << std::endl;
 
     auto docValueBuilder = bsoncxx::builder::basic::document{};
     docValueBuilder.append(
@@ -303,7 +311,7 @@ std::string MongoManager::SetSettlementItems(std::string dbName, std::string col
 
     // We choose to move in our document here, which transfers ownership to insert_one()
     try {
-        std::cout << "ready to insert_one: " + colName + "\n" << std::endl;
+        // std::cout << "ready to insert_one: " + colName + "\n" << std::endl;
         auto res = col.insert_one(std::move(InsertedDoc));
 
         if (!res) {
@@ -314,11 +322,13 @@ std::string MongoManager::SetSettlementItems(std::string dbName, std::string col
         if (res->inserted_id().type() == bsoncxx::type::k_oid) {
             bsoncxx::oid id = res->inserted_id().get_oid().value;
             std::string id_str = id.to_string();
-            std::cout << "Inserted id: " << id_str << std::endl;
+            std::ostringstream ss;
+            ss << "Inserted id: " << id_str << "\n" << std::endl;
+            std::cout << ss.str();
             return id_str;
         }
         else {
-            std::cout << "Inserted id was not an OID type" << std::endl;
+            std::cout << "Inserted id was not an OID type \n" << std::endl;
             return "";
         }
     }
@@ -401,9 +411,11 @@ void MongoManager::GetKlineUpdate(std::string dbName, std::string colName, std::
         while (true) {
             auto currentSyncedStartTime = this->GetSynedFlag("marketSyncFlag", colName);
             if (syncedStartTime < currentSyncedStartTime) {
-                std::vector<Kline> latestKlines(2);
+                std::vector<Kline> latestKlines;
                 this->GetLatestSyncedKlines(currentSyncedStartTime, 2, dbName, colName, latestKlines);
                 if (latestKlines.size() != 2) {
+                    syncedStartTime = currentSyncedStartTime;
+                    std::this_thread::sleep_for(std::chrono::seconds(5));
                     continue;
                 }
                 return;

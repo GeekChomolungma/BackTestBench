@@ -23,6 +23,17 @@
     // Windows-specific includes and definitions
     // #include "matplotlibcpp.h"
     // namespace plt = matplotlibcpp;
+
+#ifdef _DEBUG
+// for memory leak check 
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#include <csignal>
+
+#else
+// Release
+#endif
 #else
 #include <cassert>
 // Other non-Windows includes and definitions
@@ -33,14 +44,34 @@ void GenerateTestBench(BacktestingPlatform& BTP,
     const std::vector<std::string> allIntervals, const std::vector<std::string> allSymbols, 
     int64_t startTime, int64_t endTime);
 
+int reportHook(int reportType, char* message, int* returnValue) {
+    std::cout << message;
+    std::ofstream logFile("leak_report.txt", std::ios_base::app);
+    logFile << message;
+    logFile.close();
+    *returnValue = 0;
+    return TRUE;  
+}
+
+void signalHandler(int signum) {
+    _CrtDumpMemoryLeaks(); // trigger dump
+    exit(signum);
+}
+
 int main()
 {
-    #ifdef _WIN32
-        // Windows-specific includes and definitions
-        //plt::plot({ 1,3,2,4 });
-        //plt::show();
-    #else
-    #endif
+#ifdef _WIN32
+#ifdef _DEBUG
+_CrtSetReportHook(reportHook);
+_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+signal(SIGINT, signalHandler);
+#else
+// Windows-specific includes and definitions
+//plt::plot({ 1,3,2,4 });
+//plt::show();
+#endif
+#else
+#endif
 
     Config cfg("config.ini");
     const std::string uriCfg = cfg.getUri();
@@ -55,8 +86,8 @@ int main()
     int64_t endTime = 1642694399000; // not used yet in MyStrategy
     GenerateTestBench(BTP, allIntervals, allSymbols, startTime, endTime);
 
-    ThreadPool tpRealTime(allIntervals.size());
     while (true) {
+        ThreadPool tpRealTime(allIntervals.size());
         for (auto interval : allIntervals) {
             MyStrategy* strategyInstance = new MyStrategy(startTime, endTime, "");
             auto realTimeTask = boost::bind(&BacktestingPlatform::runStrategyRealTime<Kline>,
@@ -69,6 +100,7 @@ int main()
 
             tpRealTime.Enqueue(realTimeTask);
         }
+        tpRealTime.WaitAll();
     }
 
     return 0;
