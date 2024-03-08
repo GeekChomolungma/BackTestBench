@@ -95,7 +95,10 @@ public:
     template <typename T> void runStrategyRealTime(
         BaseStrategy<T>* strategyInst, int64_t startTime, std::string dbName, std::vector<std::string> symbols, std::string interval
     ) {
-        std::cout << "runStrategyRealTime begin for interval: " + interval << std::endl;
+        std::ostringstream ss;
+        ss << "runStrategyRealTime begin for interval: " + interval << std::endl;
+        std::cout << ss.str();
+
         try {
             std::vector<Kline> targetData;
             std::vector<std::vector<Kline>> watchDataGroup(symbols.size());

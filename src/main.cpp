@@ -112,7 +112,11 @@ signal(SIGINT, signalHandler);
                     interval);
 
                 ss.str(""); // clean ss
-                ss << "New Real-Time Task: " + interval + " Finshed! \n" << std::endl;
+                now = std::chrono::system_clock::now();
+                now_c = std::chrono::system_clock::to_time_t(now);
+                now_tm = std::localtime(&now_c);
+                ss << std::put_time(now_tm, "%Y-%m-%d %H:%M:%S");
+                ss << " - New Real-Time Task: " + interval + " Finshed! \n" << std::endl;
                 std::cout << ss.str(); 
             }
         };
