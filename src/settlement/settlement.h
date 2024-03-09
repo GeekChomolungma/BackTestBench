@@ -4,6 +4,8 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <sstream>
+#include <iostream>
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/locks.hpp>
 #include "dtos/settlementItem.h"
@@ -26,6 +28,12 @@ public:
                 // read previous item from cache
                 SettlementItem prevItem;
                 auto prevItemExist = this->GetPrivousSettleItem(colName, prevItem);
+                if ((prevItemExist) && (prevItem.StartTime == kline.StartTime)){
+                    std::ostringstream ss;
+                    ss << "ExecSettlement, Same kline in " + colName + " with the prev action Item, start time: " << kline.StartTime << "\n" << std::endl;
+                    std::cout << ss.str();
+                    continue;
+                }
                 SettlementItem currItem;
                 currItem.StartTime = kline.StartTime;
                 currItem.EndTime = kline.EndTime;
@@ -57,7 +65,7 @@ public:
                     else {
                         // update cache
                         currItem.Id = insertedID;
-                        std::cout << "Insert settlement items, col:" + colName + "insertedID:" + insertedID << std::endl;
+                        std::cout << "Insert settlement items, col: " + colName + " insertedID:" + insertedID << std::endl;
                         this->SetPrivousSettleItem(colName, currItem);
                     }
                 }
