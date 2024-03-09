@@ -15,13 +15,13 @@ int64_t MongoManager::GetSynedFlag(std::string dbName, std::string colName) {
     auto client = this->mongoPool.acquire();
     auto col = (*client)[dbName.c_str()][colName.c_str()];
 
-    // Ping the database.
-    //const auto ping_cmd = make_document(kvp("ping", 1));
-    //mongoDB.run_command(ping_cmd.view());
-    //std::cout << "Pinged your deployment. You successfully connected to MongoDB!" << std::endl;
-
     try
     {
+        // Ping the database.
+        //const auto ping_cmd = make_document(kvp("ping", 1));
+        //(*client)[dbName.c_str()].run_command(ping_cmd.view());
+        //std::cout << "Pinged your deployment. You successfully connected to MongoDB!" << std::endl;
+
         auto find_one_result = col.find_one({});
         if (find_one_result) {
             auto extractedValue = *find_one_result;
@@ -33,6 +33,7 @@ int64_t MongoManager::GetSynedFlag(std::string dbName, std::string colName) {
             return st;
         }
         else {
+            std::cout << "failed to find one!" << std::endl;
             return 0;
         }
     }
@@ -44,13 +45,20 @@ int64_t MongoManager::GetSynedFlag(std::string dbName, std::string colName) {
     }
 }
 
-void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline& klineInst) {
+bool MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline& klineInst) {
     const auto& oidBytesVec = doc["_id"].get_oid().value.bytes();
     for (size_t i = 0; i < 12; ++i) {
         klineInst.Id[i] = oidBytesVec[i];
     }
 
     auto klineContent = doc["kline"];
+    if (!klineContent) {
+        std::ostringstream ss;
+        ss << "klineContent is nil. \n" << std::endl;
+        std::cout << ss.str();
+        return false;
+    }
+
     klineInst.StartTime = klineContent["starttime"].get_int64().value;
     klineInst.EndTime = klineContent["endtime"].get_int64().value;
     bsoncxx::stdx::string_view symbolTmp = klineContent["symbol"].get_string().value;
@@ -158,19 +166,33 @@ void MongoManager::ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline
     bsoncxx::stdx::string_view qutovStrTmp = klineContent["quotevolume"].get_string().value;
     klineInst.QuoteVolume = std::stod(std::string(qutovStrTmp));
 
+    return true;
 }
 
-void MongoManager::GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList) {
+// sortOrder:
+// -1 delince
+// 1 arise
+void MongoManager::GetKline(int64_t startTime, int64_t endTime, int limit, int sortOrder, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList) {
     auto client = this->mongoPool.acquire();
-    auto db = (*client)[dbName.c_str()];
-    auto col = db[colName.c_str()];
+    auto col = (*client)[dbName.c_str()][colName.c_str()];
+
+    mongocxx::options::find opts;
+    opts.sort(make_document(kvp("kline.starttime", sortOrder)));
+    opts.limit(limit);
+
     auto cursor_filtered = 
-        col.find({ make_document(kvp("kline.starttime", make_document(kvp("$gte", startTime), kvp("$lt", endTime)))) });
+        col.find( 
+            make_document(
+                kvp("kline", make_document(kvp("$exists", true))), 
+                kvp("kline.starttime", make_document(kvp("$gte", startTime), kvp("$lte", endTime)))
+            ), opts);
 
     for (auto&& doc : cursor_filtered) {        
         Kline klineInst;
-        this->ParseKline(doc, klineInst);
-        targetKlineList.push_back(klineInst);
+        auto existed = this->ParseKline(doc, klineInst);
+        if (existed) {
+            targetKlineList.push_back(klineInst);
+        }
     }
 }
 
@@ -190,8 +212,10 @@ void MongoManager::GetLatestSyncedKlines(int64_t endTime, int limit, std::string
 
     for (auto&& doc : cursor_filtered) {
         Kline klineInst;
-        this->ParseKline(doc, klineInst);
-        fetchedDataPerCol.push_back(klineInst);
+        auto existed = this->ParseKline(doc, klineInst);
+        if (existed) {
+            fetchedDataPerCol.push_back(klineInst);
+        } 
     }
     std::reverse(fetchedDataPerCol.begin(), fetchedDataPerCol.end());
 
@@ -371,8 +395,10 @@ void MongoManager::WatchKlineUpdate(std::string dbName, std::string colName, std
                         for (auto&& doc : cursor) {
                             Kline klineInst;
                             try {
-                                this->ParseKline(doc, klineInst);
-                                PreviousTwoKlines.push_back(klineInst); 
+                                auto existed = this->ParseKline(doc, klineInst);
+                                if (existed) {
+                                    PreviousTwoKlines.push_back(klineInst);
+                                }
                             }
                             catch (const mongocxx::exception& e) {
                                 std::cerr << "mongocxx error exception: " << e.what() << std::endl;
@@ -420,7 +446,7 @@ void MongoManager::GetKlineUpdate(std::string dbName, std::string colName, std::
                 }
                 PreviousTwoKlines.insert(PreviousTwoKlines.end(), latestKlines.begin(), latestKlines.end());
                 std::ostringstream ss;
-                ss << colName + " PreviousTwoKlines size is: " << PreviousTwoKlines.size() << "\n" << std::endl;
+                ss << colName + " PreviousTwoKlines size is: " << PreviousTwoKlines.size() << " currentSyncedTime is: "<< currentSyncedStartTime << "\n" << std::endl;
                 std::cout << ss.str();
 
                 return;

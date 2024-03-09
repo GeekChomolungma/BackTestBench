@@ -26,9 +26,9 @@ public:
     
     int64_t GetSynedFlag(std::string dbName, std::string colName);
     
-    void ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline& klineInst);
+    bool ParseKline(const bsoncxx::v_noabi::document::view& doc, Kline& klineInst);
 
-    void GetKline(int64_t startTime, int64_t endTime, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList);
+    void GetKline(int64_t startTime, int64_t endTime, int limit, int sortOrder, std::string dbName, std::string colName, std::vector<Kline>& targetKlineList);
 
     void GetLatestSyncedKlines(int64_t endTime, int limit, std::string dbName, std::string colName, std::vector<Kline>& fetchedDataPerCol);
 

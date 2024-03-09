@@ -22,73 +22,90 @@ public:
     template <typename T> void runStrategyTask(
         BaseStrategy<T>* strategyInst, std::string dbName, std::vector<std::string> symbols, std::string interval
     ) {
-        std::vector<Kline> targetData;
-        std::vector<std::pair<int,int>> dataIndexes;
-        std::vector<std::string> colNameList;
-        int startIndex = 0;
+        std::vector<int64_t> currentStartTimes(symbols.size());
+        while (true) {
+            std::vector<Kline> targetData;
+            std::vector<std::pair<int,int>> dataIndexes;
+            std::vector<std::string> colNameList;
+            int startIndex = 0;
 
-        for (auto s : symbols) {
-            std::ostringstream oss;
-            oss << "Binance-" << s << "-" << interval;
-            std::string colName = oss.str();
-            
-            //this->dbManager.GetKline(startTime, endTime, dbName, colName, targetData);
+            auto i = 0;
+            for (auto s : symbols) {
+                std::ostringstream oss;
+                oss << "Binance-" << s << "-" << interval;
+                std::string colName = oss.str();
 
-            auto syncedTime = this->dbManager.GetSynedFlag("marketSyncFlag" , colName);
+                // fetch the synced time as get line end time.
+                auto syncedTime = this->dbManager.GetSynedFlag("marketSyncFlag" , colName);
 
-            std::vector<Kline> fetchedDataPerCol;
-            this->dbManager.GetLatestSyncedKlines(syncedTime, 200, dbName, colName, fetchedDataPerCol);
-            std::ostringstream ss;
-            ss << "GetKline colName:" << colName << ", size is:" << fetchedDataPerCol.size() << "\n" << std::endl;
-            std::cout << ss.str();
-            if (fetchedDataPerCol.size() == 0) {
-                continue;
-            }
-            
-            //for (auto data : fetchedDataPerCol) {
-            //    std::cout << "runStrategyTask: GetLatestSyncedKlines for Col: " + colName << " start time is: " << data.StartTime << "\n" << std::endl;
-            //}
+                std::vector<Kline> fetchedDataPerCol;
+                //this->dbManager.GetLatestSyncedKlines(syncedTime, 200, dbName, colName, fetchedDataPerCol);
+                this->dbManager.GetKline(currentStartTimes[i], syncedTime, 5000, 1, dbName, colName, fetchedDataPerCol);
+                std::ostringstream ss;
+                ss << "runStrategyTask, GetKline colName:" << colName << ", size is:" << fetchedDataPerCol.size();
+                ss << "  index is: " << i << " start time is: " << currentStartTimes[i] << ", synced time is: " << syncedTime;
+                ss << "\n" << std::endl;
+                std::cout << ss.str();
+                if (fetchedDataPerCol.size() == 0) {
+                    continue;
+                }
 
-            targetData.insert(targetData.end(), fetchedDataPerCol.begin(), fetchedDataPerCol.end());
-            colNameList.push_back(colName);
-            int endIndex = targetData.size() - 1;
-            dataIndexes.push_back(std::pair<int, int>(startIndex, endIndex));
-            startIndex = targetData.size();
-        }
+                if (fetchedDataPerCol.front().StartTime == syncedTime) {
+                    continue;
+                }
 
-        // send orders
-        try {
-            // exec the calculation
-            strategyInst->onMarketData(targetData, dataIndexes);
+                currentStartTimes[i] = fetchedDataPerCol.back().StartTime;
+                i++;
 
-            // exec settlement
-            this->runSettlement(targetData, colNameList, dataIndexes);
-
-            // update Kline one by one with Bulk
-            int colNameIndex = 0;
-            std::ostringstream ss;
-             ss << interval + " dataIndexes size is: " << targetData.size() << "\n" << std::endl;
-            std::cout << ss.str();
-           
-            for (auto dIndex : dataIndexes) {
-                //Kline kline0 = static_cast<Kline>(targetData[dIndex.first]);
-                //std::cout << "Write Back collection: " << colNameList[colNameIndex] << " first kline ID is:";
-                //for (int i = 0; i < 12; ++i) {
-                //    std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(kline0.Id[i]);
+                //for (auto data : fetchedDataPerCol) {
+                //    std::cout << "runStrategyTask: GetLatestSyncedKlines for Col: " + colName << " start time is: " << data.StartTime << "\n" << std::endl;
                 //}
-                //std::cout << std::dec << "\n" << std::endl;
 
-                std::vector<T> unitData(targetData.begin() + dIndex.first, targetData.begin() + dIndex.second + 1);
-                this->dbManager.BulkWriteByIds(dbName, colNameList[colNameIndex], unitData);
-                colNameIndex++;
+                targetData.insert(targetData.end(), fetchedDataPerCol.begin(), fetchedDataPerCol.end());
+                colNameList.push_back(colName);
+                int endIndex = targetData.size() - 1;
+                dataIndexes.push_back(std::pair<int, int>(startIndex, endIndex));
+                startIndex = targetData.size();
             }
-        }
-        catch (const std::exception& e) {
-            // error 
-            std::cerr << "exception: " << e.what() << std::endl;
-        }
-        catch (...) {
-            std::cerr << "unkown error:" << std::endl;
+
+            if (targetData.size() == 0) {
+                return;
+            }
+            
+            // send orders
+            try {
+                // exec the calculation
+                strategyInst->onMarketData(targetData, dataIndexes);
+
+                // exec settlement
+                this->runSettlement(targetData, colNameList, dataIndexes);
+
+                // update Kline one by one with Bulk
+                int colNameIndex = 0;
+                std::ostringstream ss;
+                 ss << interval + " dataIndexes size is: " << targetData.size() << "\n" << std::endl;
+                std::cout << ss.str();
+           
+                for (auto dIndex : dataIndexes) {
+                    //Kline kline0 = static_cast<Kline>(targetData[dIndex.first]);
+                    //std::cout << "Write Back collection: " << colNameList[colNameIndex] << " first kline ID is:";
+                    //for (int i = 0; i < 12; ++i) {
+                    //    std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(kline0.Id[i]);
+                    //}
+                    //std::cout << std::dec << "\n" << std::endl;
+
+                    std::vector<T> unitData(targetData.begin() + dIndex.first, targetData.begin() + dIndex.second + 1);
+                    this->dbManager.BulkWriteByIds(dbName, colNameList[colNameIndex], unitData);
+                    colNameIndex++;
+                }
+            }
+            catch (const std::exception& e) {
+                // error 
+                std::cerr << "exception: " << e.what() << std::endl;
+            }
+            catch (...) {
+                std::cerr << "unkown error:" << std::endl;
+            }
         }
     };
 

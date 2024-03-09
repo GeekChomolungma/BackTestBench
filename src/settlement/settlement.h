@@ -34,7 +34,7 @@ public:
                     currItem.Interval[i] = kline.Interval[i];
                 }
                 currItem.Action = kline.Action;
-                currItem.ExecPrice = kline.Open;
+                currItem.ExecPrice = kline.Close;
 
                 // create the an item when cache is empty
                 if (!prevItemExist) {
