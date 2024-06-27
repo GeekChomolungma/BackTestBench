@@ -1,7 +1,7 @@
 #ifndef MYSTRATEGY_H
 #define MYSTRATEGY_H
 
-#include "baseStrategy.h"
+#include "../../baseStrategy.h"
 #include "dtos/kline.h"
 #include <string>
 

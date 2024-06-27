@@ -19,7 +19,7 @@
 #include <mongocxx/uri.hpp>
 
 #include "platform/platform.h"
-#include "strategy/myStrategy.h"
+#include "strategy/superTrendStrategy/include/myStrategy.h"
 //#include <chrono>
 //#include <thread>
 
@@ -137,7 +137,7 @@ void GenerateTestBench(BacktestingPlatform& BTP, const std::vector<std::string> 
             "marketInfo",
             allSymbols,
             interval);
-
+ 
         tpBackTest.Enqueue(backTestTask);
     }
 }

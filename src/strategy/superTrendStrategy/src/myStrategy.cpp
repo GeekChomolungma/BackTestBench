@@ -1,4 +1,4 @@
-#include "strategy/myStrategy.h"
+#include "../include/myStrategy.h"
 #include <iostream>
 #include <sstream>
 #include <algorithm> // For std::max
@@ -100,13 +100,16 @@ void MyStrategy::onMarketData(std::vector<Kline>& rawData, std::vector<std::pair
 
     std::cout << "targetKlines size is " << rawData.size() << std::endl;
 
+#ifdef HAVE_CUDA
     this->executeCUDACalculation(rawData, dataIndexes);
+#else
+    for (auto idxPair : dataIndexes) {
+            tr_klines(rawData, idxPair.first, idxPair.second);
+            rma_klines(rawData, idxPair.first, idxPair.second, 10, 1);
+            st_klines(rawData, 5.0, idxPair.first, idxPair.second);
+    }
+#endif
 
-    //auto start = std::chrono::high_resolution_clock::now();
-    //this->onMarketData_HostBenchMark(rawData, dataIndexes);
-    //auto end = std::chrono::high_resolution_clock::now();
-    //std::chrono::duration<double, std::milli> elapsed = end - start;
-    //std::cout << "onMarketData on Host, Elapsed time: " << elapsed.count() << " ms\n";
 }
 
 void MyStrategy::onMarketData_HostBenchMark(std::vector<Kline>& data, std::vector<std::pair<int, int>>& dataIndexes) {
