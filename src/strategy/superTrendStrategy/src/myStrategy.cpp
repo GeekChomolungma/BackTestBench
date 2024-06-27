@@ -5,7 +5,9 @@
 #include <chrono>
 #include <cmath>
 
-void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData, std::vector<std::pair<int, int>>& dataIndexes);
+#ifdef HAVE_CUDA
+    void kernel_wrapper(int argc, const char* argv[], std::vector<Kline>& rawData, std::vector<std::pair<int, int>>& dataIndexes);
+#endif
 
 void tr_klines(std::vector<Kline>& inputK, int start, int end) {
     for (auto i = start; i < end + 1; i++) {
@@ -130,5 +132,7 @@ void  MyStrategy::executeCUDACalculation(std::vector<Kline>& rawData, std::vecto
     // for cuda process
     int argc = 0;
     const char* argv[1] = { "My strategy start running!" };
-    kernel_wrapper(0, argv, rawData, dataIndexes);
+    #ifdef HAVE_CUDA
+        kernel_wrapper(0, argv, rawData, dataIndexes);
+    #endif
 }
